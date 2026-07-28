@@ -1,21 +1,58 @@
-```txt
-npm install
-npm run dev
-```
+# 골프 페널티 정산표 (Golf Penalty Sheet)
 
-```txt
-npm run deploy
-```
+## 프로젝트 개요
+- **이름**: 골프 페널티 정산표
+- **목표**: 함께 골프 치는 회원들이 게임에서 져서 내는 페널티(벌금) 금액을 날짜별로 기록하고 합계를 자동 계산하는 스프레드시트 웹앱
+- **주요 기능**:
+  - 세로(왼쪽): 회원 이름 목록 + 전화번호
+  - 가로(위): 골프 친 날짜별 컬럼 (날짜순 자동 정렬)
+  - 각 셀: 회원이 해당 날짜에 낸 페널티 금액 입력
+  - 맨 오른쪽 열: 회원별 합계 (자동 계산)
+  - 맨 아래 행: 날짜별 합계 (자동 계산)
+  - 우측 하단: 전체 합계
+  - 담당자 이름/전화번호 입력
+  - 모바일 + PC 반응형 (좌측 이름 열 / 우측 합계 열 / 헤더 고정)
+  - CSV 내보내기 (엑셀에서 바로 열림, 한글 정상)
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
+## 기능 진입 경로 (URL / 동작)
+- `GET /` : 메인 앱 페이지 (전체 기능 포함 단일 페이지)
+- 상단 버튼:
+  - **회원 추가**: 이름·전화번호 입력 모달
+  - **날짜 추가**: YYYY-MM-DD 형식 날짜 입력
+  - **⋮ 메뉴** → **CSV 내보내기**, **전체 초기화**
+- 각 회원 행: ✏️ 수정 / 🗑️ 삭제
+- 각 날짜 헤더: 삭제 버튼
+- 금액 셀: 클릭 후 숫자 입력 (천단위 콤마 자동)
+- 전화번호는 모바일에서 탭하면 바로 전화 연결(`tel:`)
 
-```txt
-npm run cf-typegen
-```
+## 데이터 구조
+- **저장소**: 브라우저 **localStorage** (키: `golf-penalty-sheet-v1`) — 서버 DB 불필요, 각 기기에서 즉시 사용
+- **데이터 모델**:
+  ```
+  {
+    members: [{ id, name, phone }],
+    dates:   [{ id, iso }],           // iso = "YYYY-MM-DD"
+    cells:   { "memberId|dateId": 금액 },
+    manager: { name, phone }
+  }
+  ```
+- **데이터 흐름**: 입력 → localStorage 자동 저장 → 새로고침해도 유지
 
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
+## 사용 방법
+1. **회원 추가** 버튼으로 함께 치는 회원들 이름/전화번호 등록
+2. **날짜 추가** 버튼으로 골프 친 날짜 등록
+3. 표의 각 칸에 그날 각 회원이 낸 페널티 금액 입력
+4. 회원별 합계(오른쪽), 날짜별 합계(아래), 전체 합계(우측 하단)가 자동 계산
+5. 필요하면 **CSV 내보내기**로 엑셀 파일 저장
 
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+## 아직 구현되지 않은 것 / 다음 단계 제안
+- 여러 사람이 실시간 공유하려면 Cloudflare D1 등 서버 저장소 연동 필요 (현재는 기기별 localStorage)
+- 로그인/계정 기능
+- 통화 단위 표시(원) 및 회원별 정산 결과 요약
+
+## 배포
+- **플랫폼**: Cloudflare Pages (Hono)
+- **로컬 실행**: `npm run build` → `pm2 start ecosystem.config.cjs` (포트 3000)
+- **기술 스택**: Hono + Vite + Cloudflare Pages + Vanilla JS + Font Awesome
+- **상태**: ✅ 로컬 실행 중
+- **최종 수정일**: 2026-07-28
