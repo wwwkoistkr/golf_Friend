@@ -126,14 +126,14 @@ app.get('/', (c) => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <meta name="theme-color" content="#1f7a4d">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛳</text></svg>">
-  <title>골프 페널티 정산표</title>
+  <title>골프등급표</title>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
   <link href="/static/style.css" rel="stylesheet">
 </head>
 <body>
   <header class="app-header" id="app-header">
     <div class="app-header-inner" id="app-header-inner">
-      <h1><i class="fas fa-golf-ball-tee"></i> 골프 페널티 정산표</h1>
+      <h1><i class="fas fa-golf-ball-tee"></i> 골프등급표</h1>
       <div class="header-actions">
         <button id="btn-add-member" class="btn btn-light"><i class="fas fa-user-plus"></i><span class="btn-text"> 회원추가</span></button>
         <button id="btn-add-date" class="btn btn-light"><i class="fas fa-calendar-plus"></i><span class="btn-text"> 날짜추가</span></button>
@@ -195,7 +195,7 @@ app.get('/', (c) => {
           <h3><i class="fas fa-pen-to-square"></i> 화면 문구 수정</h3>
           <p class="admin-desc"><i class="fas fa-circle-info"></i> 앱 화면에 보이는 <b>제목과 항목 이름</b>을 직접 바꿀 수 있습니다. 저장하면 모든 화면에 바로 반영됩니다.</p>
           <div class="label-edit">
-            <label class="lbl-row"><span>상단 제목</span><input id="lbl-title" type="text" maxlength="24" placeholder="골프 페널티 정산표" /></label>
+            <label class="lbl-row"><span>상단 제목</span><input id="lbl-title" type="text" maxlength="24" placeholder="골프등급표" /></label>
             <label class="lbl-row"><span>날짜칸 의미</span><input id="lbl-lost" type="text" maxlength="12" placeholder="잃은 돈" /></label>
             <label class="lbl-row"><span>이름 열 제목</span><input id="lbl-name" type="text" maxlength="12" placeholder="회원 이름" /></label>
             <label class="lbl-row"><span>번호 열 제목</span><input id="lbl-phone" type="text" maxlength="12" placeholder="양지번호" /></label>

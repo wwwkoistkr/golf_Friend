@@ -47,7 +47,7 @@
   // 화면에 쓰이는 문구 기본값 (관리자 모드에서 수정 가능)
   function defaultLabels() {
     return {
-      title: '골프 페널티 정산표',        // 상단 제목
+      title: '골프등급표',                 // 상단 제목
       lost: '잃은 돈',                     // 날짜 칸 안 금액의 의미
       colName: '회원 이름',                // 이름 열 제목
       colPhone: '양지번호',                // 번호 열 제목
@@ -120,6 +120,9 @@
     var sheet = document.getElementById('sheet');
     var inner = document.getElementById('app-header-inner');
     if (!sheet || !inner) return;
+    // 모바일(≤640px): 헤더는 화면폭에 고정(2단 배치)하므로 표 너비를 따라
+    // 늘리지 않는다. 인라인 min-width를 비워 CSS 규칙에 맡긴다.
+    if (window.innerWidth <= 640) { inner.style.minWidth = ''; return; }
     var tableW = sheet.getBoundingClientRect().width;
     // 좌우 패딩(28px)을 더해 표 오른쪽 끝까지 헤더가 이어지도록
     inner.style.minWidth = (tableW + 28) + 'px';
@@ -151,12 +154,14 @@
     // 접힘 계산이 좁게 갇힌다. 부모(.app-main) 또는 화면 폭을 기준으로 계산.
     var main = document.getElementById('view-sheet');
     var mainW = main ? main.clientWidth : 0;
-    var avail = (mainW || window.innerWidth) - 24; // 여유
+    // 좁은 화면에서는 여백을 적게 잡아 날짜가 한 개라도 더 들어가도록 함
+    var pad = (window.innerWidth <= 480) ? 10 : 24;
+    var avail = (mainW || window.innerWidth) - pad; // 여유
     // 고정 열(No/이름/양지번호/합계) 폭을 뺀 나머지에 날짜를 채움
     var noW = cssPx('--w-no', 54), nameW = colW('name', '--w-name', 132),
         phoneW = colW('phone', '--w-phone', 96), totalW = cssPx('--w-total', 110);
     var fixed = noW + nameW + phoneW + totalW;
-    var foldW = 34; // '···' 접힘 표시 열 폭
+    var foldW = (window.innerWidth <= 480) ? 28 : 34; // '···' 접힘 표시 열 폭
     var room = avail - fixed;
 
     // 뒤(최근)에서부터 들어갈 수 있는 만큼만 채움 (단, 최대 3일까지만)
