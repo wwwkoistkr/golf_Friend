@@ -130,7 +130,7 @@ app.get('/', (c) => {
 
   <main class="app-main" id="view-sheet">
     <div id="mode-banner" class="mode-banner mode-user">
-      <i class="fas fa-pen"></i> 일반 사용자 모드 · <b>새 입력만</b> 가능합니다 (수정·삭제는 관리자)
+      <i class="fas fa-pen"></i> 일반 사용자 모드 · 모든 칸을 <b>자유롭게 입력·수정</b>할 수 있습니다 (회원·날짜 삭제, 자료실은 관리자)
     </div>
     <div class="table-wrap" id="table-wrap">
       <table id="sheet" class="sheet">

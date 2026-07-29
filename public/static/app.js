@@ -107,9 +107,9 @@
     head.innerHTML = h;
   }
 
-  // 일반 모드에서 "이미 값이 있는" 칸은 잠금(readonly). 관리자면 항상 편집 가능.
+  // 모든 입력칸은 누구나 자유롭게 입력·수정 가능(잠금 없음).
   function inputCls(baseCls, hasValue) {
-    return baseCls + ((!isAdmin && hasValue) ? ' locked' : '');
+    return baseCls;
   }
 
   function renderBody() {
@@ -119,14 +119,11 @@
       h += '<td class="cell-no">' + (idx + 1) +
         (isAdmin ? '<button class="row-del" data-del-member="' + m.id + '" title="이 회원 삭제"><i class="fas fa-xmark"></i></button>' : '') +
         '</td>';
-      var nameLocked = !isAdmin && !!m.name;
-      var phoneLocked = !isAdmin && !!m.phone;
-      h += '<td class="cell-name" data-col="name"' + wStyle('name') + '><input type="text" maxlength="6" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름6자" ' + (nameLocked ? 'readonly' : '') + ' /></td>';
-      h += '<td class="cell-phone" data-col="phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" maxlength="6" class="' + inputCls('phone-input', !!m.phone) + '" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="번호6자" ' + (phoneLocked ? 'readonly' : '') + ' /></td>';
+      h += '<td class="cell-name" data-col="name"' + wStyle('name') + '><input type="text" maxlength="6" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름6자" /></td>';
+      h += '<td class="cell-phone" data-col="phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" maxlength="6" class="' + inputCls('phone-input', !!m.phone) + '" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="번호6자" /></td>';
       state.dates.forEach(function (d) {
         var val = state.cells[cellKey(m.id, d.id)];
-        var locked = !isAdmin && !!val;
-        h += '<td class="cell-money" data-col="date:' + d.id + '"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" maxlength="7" data-m="' + m.id + '" data-d="' + d.id + '" class="' + inputCls('money-input', !!val) + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0" ' + (locked ? 'readonly' : '') + ' /></td>';
+        h += '<td class="cell-money" data-col="date:' + d.id + '"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" maxlength="7" data-m="' + m.id + '" data-d="' + d.id + '" class="' + inputCls('money-input', !!val) + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0" /></td>';
       });
       h += '<td class="cell-total" data-total-member="' + m.id + '">' + fmt(memberTotal(m.id)) + '</td>';
       h += '</tr>';
@@ -166,11 +163,6 @@
     if (t.matches('.money-input')) {
       var num = parseNum(t.value);
       var k = cellKey(t.getAttribute('data-m'), t.getAttribute('data-d'));
-      // 일반 모드: 이미 저장된 값이 있으면 삭제/변경 금지 (관리자만 가능)
-      if (!isAdmin && state.cells[k]) {
-        alert('입력된 금액의 수정·삭제는 관리자만 할 수 있습니다.');
-        t.value = fmt(state.cells[k]); return;
-      }
       // 금액 상한: 십만원(100,000). 초과 입력 시 상한값으로 고정
       if (num > MAX_MONEY) { num = MAX_MONEY; t.value = String(MAX_MONEY); }
       if (num < 0) num = 0;
@@ -179,16 +171,10 @@
       if (qpTarget === t && quickCur) quickCur.textContent = fmt(num); // 팝오버 현재값 동기화
     } else if (t.matches('.name-input')) {
       var m1 = findMember(t.getAttribute('data-name'));
-      if (m1) {
-        if (!isAdmin && m1.name) { t.value = m1.name; alert('입력된 이름의 수정은 관리자만 할 수 있습니다.'); return; }
-        m1.name = t.value; save();
-      }
+      if (m1) { m1.name = t.value; save(); }
     } else if (t.matches('.phone-input')) {
       var m2 = findMember(t.getAttribute('data-phone'));
-      if (m2) {
-        if (!isAdmin && m2.phone) { t.value = m2.phone; alert('입력된 양지번호의 수정은 관리자만 할 수 있습니다.'); return; }
-        m2.phone = t.value; save();
-      }
+      if (m2) { m2.phone = t.value; save(); }
     }
   });
   body.addEventListener('focus', function (e) {
@@ -208,9 +194,8 @@
   var qpTarget = null; // 현재 편집 중인 money-input
 
   function qpCanEdit(t) {
-    // 일반 모드에서 이미 저장된 값이 있으면 편집 불가(관리자만)
-    var k = cellKey(t.getAttribute('data-m'), t.getAttribute('data-d'));
-    return isAdmin || !state.cells[k];
+    // 모든 금액칸을 누구나 편집 가능
+    return true;
   }
 
   function openQuickPad(t) {
@@ -432,7 +417,7 @@
         banner.innerHTML = '<i class="fas fa-lock-open"></i> 관리자 모드 · 모든 값을 <b>수정·삭제</b>할 수 있습니다';
       } else {
         banner.className = 'mode-banner mode-user';
-        banner.innerHTML = '<i class="fas fa-pen"></i> 일반 사용자 모드 · <b>새 입력만</b> 가능합니다 (수정·삭제는 관리자)';
+        banner.innerHTML = '<i class="fas fa-pen"></i> 일반 사용자 모드 · 모든 칸을 <b>자유롭게 입력·수정</b>할 수 있습니다 (회원·날짜 삭제, 자료실은 관리자)';
       }
     }
   }
