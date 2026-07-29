@@ -299,12 +299,16 @@
     state.members.push({ id: uid(), name: '', phone: '' }); save(); render();
     var inputs = body.querySelectorAll('.name-input'); if (inputs.length) inputs[inputs.length - 1].focus();
   });
-  document.getElementById('btn-add-date').addEventListener('click', function () {
-    var input = prompt('골프 친 날짜를 입력하세요 (예: 2026-07-28)', todayIso());
-    if (input === null) return;
-    var iso = input.trim(); if (!iso) iso = todayIso();
-    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(iso)) { var p = iso.split('-'); iso = p[0] + '-' + p[1].padStart(2, '0') + '-' + p[2].padStart(2, '0'); }
-    else { var dt = new Date(iso); if (isNaN(dt.getTime())) { alert('날짜 형식이 올바르지 않습니다.\n예: 2026-07-28'); return; } var q = function (n) { return String(n).padStart(2, '0'); }; iso = dt.getFullYear() + '-' + q(dt.getMonth() + 1) + '-' + q(dt.getDate()); }
+  // 선택한 날짜(iso: YYYY-MM-DD)를 실제로 표에 추가
+  function addDateColumn(iso) {
+    if (!iso) return;
+    // 같은 날짜가 이미 있으면 중복 추가하지 않음
+    for (var i = 0; i < state.dates.length; i++) {
+      if (state.dates[i].iso === iso) {
+        alert('이미 추가된 날짜입니다: ' + fmtDateFull(iso));
+        return;
+      }
+    }
     var newId = uid();
     // 새 날짜 열은 "직전 날짜 열과 같은 너비"로 생성 (사용자가 조절한 폭을 그대로 상속)
     if (state.dates.length) {
@@ -316,6 +320,24 @@
     state.dates.sort(function (a, b) { return a.iso < b.iso ? -1 : a.iso > b.iso ? 1 : 0; });
     save(); render();
     document.getElementById('table-wrap').scrollLeft = 99999;
+  }
+
+  // 날짜추가 버튼 → 브라우저 기본 달력(캘린더)을 바로 띄움
+  var datePicker = document.getElementById('date-picker');
+  document.getElementById('btn-add-date').addEventListener('click', function () {
+    datePicker.value = todayIso(); // 오늘 날짜에서 시작
+    // showPicker(): 최신 브라우저에서 달력을 즉시 표시
+    if (typeof datePicker.showPicker === 'function') {
+      try { datePicker.showPicker(); return; } catch (e) {}
+    }
+    // 폴백: 포커스 후 클릭(구형 브라우저)
+    datePicker.focus(); datePicker.click();
+  });
+  // 달력에서 날짜를 클릭(선택)하면 즉시 열 추가
+  datePicker.addEventListener('change', function () {
+    var iso = datePicker.value; // 이미 YYYY-MM-DD 형식
+    datePicker.value = '';
+    addDateColumn(iso);
   });
 
   // ---------- 담당자 ----------

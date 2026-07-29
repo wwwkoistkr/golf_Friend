@@ -83,6 +83,16 @@ html, body {
 .app-header h1 i { color: var(--gold); }
 .header-actions { display: flex; gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
 
+/* 숨겨진 날짜 선택기: '날짜추가' 버튼 위치에 겹쳐 두고 눈에는 안 보이게.
+   클릭 시 브라우저 기본 달력(캘린더)이 바로 뜨도록 함. */
+.date-picker-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  border: 0; padding: 0; margin: 0;
+  pointer-events: none;   /* 버튼 클릭을 막지 않도록 */
+}
+
 .btn {
   border: none; border-radius: 9px;
   padding: 8px 13px; font-size: 14px; font-weight: 700;
