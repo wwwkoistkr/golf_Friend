@@ -482,7 +482,29 @@ html, body {
 
 .hidden { display: none !important; }
 
-/* ===== Mobile first: 좁은 화면 최적화 ===== */
+/* ===== 좁은 컬럼 폭: 900px 이하 모든 기기(큰 폰·가로화면·태블릿 포함) =====
+   ⚠️ 중요: 컬럼 폭 축소는 반드시 넓은 범위(900px)에 둔다.
+   과거엔 640px 이하에서만 좁혀서, 641px 이상으로 인식되는 기기(대형 스마트폰/
+   태블릿/가로모드)에서 데스크탑용 넓은 양지번호(96px)가 나와 다른 컬럼을
+   밀어내는 문제가 있었음. 이 블록은 오직 컬럼 폭만 담당한다. */
+@media (max-width: 900px) {
+  :root {
+    --w-no: 30px;
+    --w-name: 68px;    /* 회원 이름: 좁게 (2~3자 충분, 긴 이름은 칸 안 스크롤) */
+    --w-phone: 50px;   /* 양지번호: 좁게 고정 → 다른 컬럼이 밀리지 않음 */
+    --w-date: 82px;    /* 날짜/잃은 돈 */
+    --w-total: 78px;   /* 합계 */
+  }
+  /* 좁은 칸에 맞춰 헤더 글자를 작게 + 2줄 허용(칸 폭이 헤더 글자에 눌려 안 줄어드는 것 방지) */
+  .sheet thead th { padding: 9px 2px; font-size: 12px; letter-spacing: 0; }
+  .sheet thead th.col-name, .sheet thead th.col-phone { white-space: normal; word-break: keep-all; line-height: 1.15; }
+  .date-head .date-lost { font-size: 9px; padding: 1px 5px; }
+  .cell-name input { font-size: 12.5px; }
+  .cell-phone input { font-size: 12px; letter-spacing: 0; }
+  .cell-name input::placeholder, .cell-phone input::placeholder { font-size: 10px; }
+}
+
+/* ===== Mobile first: 좁은 화면 UI(폰트/버튼/헤더) 최적화 ===== */
 @media (max-width: 640px) {
   .app-header { padding: 9px 10px; }
   .app-header h1 { font-size: 16px; }
@@ -492,24 +514,7 @@ html, body {
   .manager-bar input { min-width: 90px; flex: 1; }
   .table-wrap { max-height: calc(100vh - 160px); }
   .sheet { font-size: 13px; }
-  /* 모바일: 이름·번호 칸을 더 좁혀서 날짜(잃은돈)+합계가 넉넉히 보이도록.
-     (이름은 보통 2~3자라 72px로도 충분하고, 6자 입력 시엔 칸 안에서 스크롤됨) */
-  :root {
-    --w-no: 30px;
-    --w-name: 70px;
-    --w-phone: 48px;
-    --w-date: 82px;
-    --w-total: 78px;
-  }
-  .date-head .date-lost { font-size: 9px; padding: 1px 5px; }
   .cell-name input, .cell-phone input, .cell-money input { padding: 9px 3px; font-size: 13px; }
-  /* 좁아진 이름·번호 칸에 맞춰 글자·플레이스홀더를 조금 작게 */
-  .cell-name input { font-size: 12.5px; }
-  .cell-phone input { font-size: 12px; letter-spacing: 0; }
-  .cell-name input::placeholder, .cell-phone input::placeholder { font-size: 10px; }
-  /* 좁은 칸에 맞춰 헤더 글자를 작게 + 2줄 허용(칸 폭이 헤더 글자에 눌려 안 줄어드는 것 방지) */
-  .sheet thead th { padding: 9px 2px; font-size: 12px; letter-spacing: 0; }
-  .sheet thead th.col-name, .sheet thead th.col-phone { white-space: normal; word-break: keep-all; line-height: 1.15; }
   .admin-cards { grid-template-columns: 1fr; }
   .asset-list { grid-template-columns: repeat(auto-fill, minmax(46%, 1fr)); }
 }
