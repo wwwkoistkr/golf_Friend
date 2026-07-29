@@ -1,19 +1,24 @@
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 :root {
-  --green: #1f7a4d;
-  --green-dark: #155d3a;
-  --green-soft: #e6f4ec;
+  --green: #157347;
+  --green-dark: #0f5132;
+  --green-soft: #e8f5ee;
   --gold: #f0a500;
   --gold-dark: #c98800;
-  --grid: #d4dde1;
-  --grid-strong: #90a4ae;
-  --bg: #eceff1;
-  --text: #263238;
+  --grid: #dbe3e7;
+  --grid-strong: #b0bec5;
+  --bg: #f2f5f7;
+  --text: #1f2d33;
   --muted: #607d8b;
   --red: #d32f2f;
   --total-bg: #fff8e1;
-  --w-no: calc(3ch + 20px);   /* No 컬럼 폭 (숫자 3자리) */
+  /* ── 컬럼 고정 폭(px). ch 단위는 폰트/브라우저마다 달라 정렬이 깨져 px로 고정 ── */
+  --w-no: 54px;      /* No: 숫자 3자리 */
+  --w-name: 132px;   /* 회원 이름: 한글 6자 */
+  --w-phone: 96px;   /* 양지번호: 숫자 6자리 */
+  --w-date: 92px;    /* 날짜/금액: 십만원(100,000) */
+  --w-total: 110px;  /* 합계 */
 }
 
 html {
@@ -52,12 +57,12 @@ html, body {
 /* ===== Header ===== */
 .app-header {
   position: sticky; top: 0; z-index: 30;
-  background: var(--green);
+  background: linear-gradient(135deg, #157347 0%, #0f5132 100%);
   color: #fff;
-  padding: 10px 12px;
+  padding: 11px 14px;
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px; flex-wrap: wrap;
-  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+  box-shadow: 0 3px 12px rgba(15,81,50,.28);
 }
 .app-header h1 {
   font-size: 18px; font-weight: 800;
@@ -67,12 +72,14 @@ html, body {
 .header-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .btn {
-  border: none; border-radius: 8px;
-  padding: 8px 12px; font-size: 14px; font-weight: 700;
+  border: none; border-radius: 9px;
+  padding: 8px 13px; font-size: 14px; font-weight: 700;
   cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
-  transition: transform .05s, filter .15s;
+  transition: transform .05s, filter .15s, box-shadow .15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
 }
 .btn:active { transform: scale(.95); }
+.btn:hover { box-shadow: 0 2px 6px rgba(0,0,0,.18); }
 .btn-light { background: #ffffff; color: var(--green-dark); }
 .btn-light:hover { filter: brightness(.96); }
 .btn-green { background: var(--green); color: #fff; }
@@ -125,11 +132,11 @@ html, body {
 .table-wrap {
   overflow: auto;
   background: #fff;
-  border: 2px solid var(--grid-strong);
-  border-radius: 8px;
+  border: 1px solid var(--grid-strong);
+  border-radius: 12px;
   -webkit-overflow-scrolling: touch;
   max-height: calc(100vh - 150px);
-  box-shadow: 0 3px 12px rgba(0,0,0,.08);
+  box-shadow: 0 6px 20px rgba(15,81,50,.10);
 }
 .sheet {
   border-collapse: separate;
@@ -148,21 +155,24 @@ html, body {
 
 /* --- Header row --- */
 .sheet thead th {
-  background: var(--green);
+  background: linear-gradient(180deg, #1a875191 0%, #157347 100%);
+  background-color: var(--green);
   color: #fff;
   font-weight: 700;
-  padding: 6px 6px;
+  padding: 9px 6px;
+  text-align: center;
   position: sticky; top: 0; z-index: 10;
   white-space: nowrap;
   border-bottom: 2px solid var(--green-dark);
+  letter-spacing: .3px;
   position: relative;
 }
-/* 폭은 "글자 수" 기준(ch). 좌우 패딩 여유 포함 */
-.col-no    { width: var(--w-no);  min-width: var(--w-no); }   /* 숫자 3자리 */
-.col-name  { width: calc(12ch + 18px); min-width: calc(12ch + 18px); }  /* 한글 6자(=12ch) */
-.col-phone { width: calc(6ch + 20px);  min-width: calc(6ch + 20px); }   /* 6자리 */
-.col-date  { width: calc(8ch + 16px);  min-width: 56px; }
-.col-total { width: calc(11ch + 16px); min-width: 84px; background: var(--gold) !important; color: #3a2a00; }
+/* 폭은 px 고정값. header/body/foot 모두 같은 값을 써야 정렬이 맞음 */
+.col-no    { width: var(--w-no);    min-width: var(--w-no); }
+.col-name  { width: var(--w-name);  min-width: var(--w-name); }
+.col-phone { width: var(--w-phone); min-width: var(--w-phone); }
+.col-date  { width: var(--w-date);  min-width: var(--w-date); }
+.col-total { width: var(--w-total); min-width: var(--w-total); background: var(--gold) !important; color: #3a2a00; }
 
 .date-head { display: flex; flex-direction: column; align-items: center; gap: 0; position: relative; }
 .date-head .date-text { font-size: 14px; font-weight: 800; }
@@ -206,19 +216,19 @@ html, body {
 }
 .row-del:hover { color: var(--red); }
 
-/* --- Input cells --- */
+/* --- Input cells --- 헤더가 가운데 정렬이므로 입력칸도 전부 가운데 정렬 --- */
 .cell-name, .cell-phone, .cell-money { padding: 0; background: #fff; }
 .cell-name input, .cell-phone input, .cell-money input {
   width: 100%; border: none; background: transparent;
-  padding: 9px 6px; font-size: 14px; color: var(--text);
-  text-overflow: ellipsis;
+  padding: 10px 6px; font-size: 14px; color: var(--text);
+  text-align: center; text-overflow: ellipsis;
 }
 .name-input { font-weight: 700; }
-.phone-input { color: var(--muted); font-size: 13px; }
-.money-input { text-align: right; font-variant-numeric: tabular-nums; }
+.phone-input { color: var(--muted); font-size: 13px; letter-spacing: .5px; }
+.money-input { text-align: right; padding-right: 10px; font-variant-numeric: tabular-nums; }
 .money-input.has-val { color: var(--red); font-weight: 700; }
 .cell-name input::placeholder, .cell-phone input::placeholder,
-.money-input::placeholder { color: #c2ccd1; font-weight: 400; font-size: 11px; }
+.money-input::placeholder { color: #cbd5da; font-weight: 400; font-size: 11px; }
 
 .cell-name input:focus, .cell-phone input:focus, .cell-money input:focus {
   outline: 2px solid var(--gold); outline-offset: -2px; background: #fffef5;
@@ -239,7 +249,7 @@ html, body {
   color: var(--red);
   font-weight: 800;
   text-align: right;
-  padding: 9px 8px;
+  padding: 10px 10px;
   border-left: 2px solid var(--gold);
   font-size: 14px;
 }
@@ -351,14 +361,15 @@ html, body {
   .manager-bar input { min-width: 90px; flex: 1; }
   .table-wrap { max-height: calc(100vh - 160px); }
   .sheet { font-size: 13px; }
-  /* 모바일에서도 자리수 폭은 유지, 패딩만 축소 */
-  :root { --w-no: calc(3ch + 12px); }
-  .col-no    { width: var(--w-no);        min-width: var(--w-no); }
-  .col-name  { width: calc(12ch + 10px);  min-width: calc(12ch + 10px); }
-  .col-phone { width: calc(6ch + 12px);   min-width: calc(6ch + 12px); }
-  .col-date  { width: calc(7ch + 10px);   min-width: 52px; }
-  .col-total { width: calc(10ch + 10px);  min-width: 72px; }
-  .cell-name input, .cell-phone input, .cell-money input { padding: 8px 4px; font-size: 13px; }
+  /* 모바일: px 고정폭을 조금 줄여 화면에 더 많이 보이도록 */
+  :root {
+    --w-no: 42px;
+    --w-name: 104px;
+    --w-phone: 80px;
+    --w-date: 80px;
+    --w-total: 92px;
+  }
+  .cell-name input, .cell-phone input, .cell-money input { padding: 9px 4px; font-size: 13px; }
   .admin-cards { grid-template-columns: 1fr; }
   .asset-list { grid-template-columns: repeat(auto-fill, minmax(46%, 1fr)); }
 }

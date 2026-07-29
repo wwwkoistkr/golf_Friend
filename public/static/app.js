@@ -8,6 +8,7 @@
   var ADMIN_PW = 'admin1234';
 
   var isAdmin = false; // 관리자 로그인 여부 (수정/삭제 권한)
+  var MAX_MONEY = 100000; // 금액 입력 상한: 십만원
 
   var state = load();
 
@@ -107,7 +108,7 @@
       state.dates.forEach(function (d) {
         var val = state.cells[cellKey(m.id, d.id)];
         var locked = !isAdmin && !!val;
-        h += '<td class="cell-money"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" maxlength="13" data-m="' + m.id + '" data-d="' + d.id + '" class="' + inputCls('money-input', !!val) + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0000000000" ' + (locked ? 'readonly' : '') + ' /></td>';
+        h += '<td class="cell-money"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" maxlength="7" data-m="' + m.id + '" data-d="' + d.id + '" class="' + inputCls('money-input', !!val) + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0" ' + (locked ? 'readonly' : '') + ' /></td>';
       });
       h += '<td class="cell-total" data-total-member="' + m.id + '">' + fmt(memberTotal(m.id)) + '</td>';
       h += '</tr>';
@@ -152,6 +153,9 @@
         alert('입력된 금액의 수정·삭제는 관리자만 할 수 있습니다.');
         t.value = fmt(state.cells[k]); return;
       }
+      // 금액 상한: 십만원(100,000). 초과 입력 시 상한값으로 고정
+      if (num > MAX_MONEY) { num = MAX_MONEY; t.value = String(MAX_MONEY); }
+      if (num < 0) num = 0;
       if (num) state.cells[k] = num; else delete state.cells[k];
       t.classList.toggle('has-val', !!num); refreshTotals(); save();
     } else if (t.matches('.name-input')) {
