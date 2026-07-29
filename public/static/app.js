@@ -454,7 +454,9 @@
     state.dates.push({ id: newId, iso: iso });
     state.dates.sort(function (a, b) { return a.iso < b.iso ? -1 : a.iso > b.iso ? 1 : 0; });
     save(); render();
-    document.getElementById('table-wrap').scrollLeft = 99999;
+    // 접기 상태면 최근 날짜가 이미 화면에 보이므로 왼쪽(0) 유지,
+    // 펼침 상태면 오른쪽 끝(새 날짜)으로 스크롤
+    document.getElementById('table-wrap').scrollLeft = collapseEnabled ? 0 : 99999;
   }
 
   // 날짜추가 버튼 → 브라우저 기본 달력(캘린더)을 바로 띄움
