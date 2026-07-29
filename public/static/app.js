@@ -125,7 +125,18 @@
     inner.style.minWidth = (tableW + 28) + 'px';
   }
 
-  function wStyle(key) { return state.widths[key] ? (' style="width:' + state.widths[key] + 'px;min-width:' + state.widths[key] + 'px"') : ''; }
+  // 좁은 화면(모바일/태블릿/가로화면 등 900px 이하)인지 판단.
+  // 이 폭에서는 사용자가 예전에 드래그로 넓혀 저장한 이름·양지번호 폭을
+  // 무시하고, CSS의 좁은 고정폭을 강제한다(넓은 양지번호가 다른 컬럼을 밀어내는 문제 방지).
+  function isNarrow() { return window.innerWidth <= 900; }
+  // 좁은 화면에서 CSS 고정폭을 강제할 컬럼(저장된 드래그 폭 무시 대상)
+  var NARROW_FORCE = { name: true, phone: true };
+
+  function wStyle(key) {
+    // 좁은 화면에서 이름·양지번호는 저장폭을 쓰지 않고 CSS(:root/미디어쿼리)에 맡긴다.
+    if (isNarrow() && NARROW_FORCE[key]) return '';
+    return state.widths[key] ? (' style="width:' + state.widths[key] + 'px;min-width:' + state.widths[key] + 'px"') : '';
+  }
 
   // 현재 화면 폭에서 "최근 날짜 몇 개"를 보여줄 수 있는지 계산.
   // 반환: { visible: [표시할 date...], hiddenCount: 접힌 개수, hiddenTotal: 접힌 금액합 }
@@ -175,6 +186,8 @@
   }
   // 열의 실제 지정폭(사용자가 리사이즈했으면 그 값, 아니면 CSS 변수)
   function colW(key, varName, def) {
+    // 좁은 화면에서 이름·양지번호는 저장된 드래그 폭을 무시하고 CSS 좁은 폭 사용
+    if (isNarrow() && NARROW_FORCE[key]) return cssPx(varName, def);
     if (state.widths[key]) return state.widths[key];
     return cssPx(varName, def);
   }
@@ -259,11 +272,17 @@
   }
 
   function applyWidths() {
+    var narrow = isNarrow();
     Object.keys(state.widths).forEach(function (key) {
       var w = state.widths[key];
-      document.querySelectorAll('[data-col="' + key.replace(/"/g, '') + '"]').forEach(function (el) {
-        el.style.width = w + 'px'; el.style.minWidth = w + 'px';
-      });
+      var els = document.querySelectorAll('[data-col="' + key.replace(/"/g, '') + '"]');
+      // 좁은 화면에서 이름·양지번호는 저장폭을 적용하지 않고 인라인 스타일을 제거해
+      // CSS(:root/미디어쿼리)의 좁은 고정폭이 그대로 먹도록 한다.
+      if (narrow && NARROW_FORCE[key]) {
+        els.forEach(function (el) { el.style.width = ''; el.style.minWidth = ''; });
+        return;
+      }
+      els.forEach(function (el) { el.style.width = w + 'px'; el.style.minWidth = w + 'px'; });
     });
   }
 
@@ -420,7 +439,8 @@
     resizeReRenderTimer = setTimeout(function () {
       var ae = document.activeElement;
       if (ae && (ae.classList && (ae.classList.contains('name-input') || ae.classList.contains('phone-input') || ae.classList.contains('money-input')))) return;
-      if (collapseEnabled) render();
+      // 폭이 바뀌면 좁은화면 판정도 달라질 수 있으므로 항상 다시 렌더
+      render();
     }, 250);
   });
   // 표를 가로로 스크롤하면 상단 헤더도 같은 위치로 스크롤 → 버튼이 표 위를 따라감
