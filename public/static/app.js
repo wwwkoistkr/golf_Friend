@@ -158,6 +158,7 @@
       if (num < 0) num = 0;
       if (num) state.cells[k] = num; else delete state.cells[k];
       t.classList.toggle('has-val', !!num); refreshTotals(); save();
+      if (qpTarget === t && quickCur) quickCur.textContent = fmt(num); // 팝오버 현재값 동기화
     } else if (t.matches('.name-input')) {
       var m1 = findMember(t.getAttribute('data-name'));
       if (m1) {
@@ -176,11 +177,84 @@
     var t = e.target; if (!t.matches('.money-input')) return;
     var num = parseNum(t.value); t.value = num ? String(num) : '';
     setTimeout(function () { try { t.select(); } catch (x) {} }, 0);
+    openQuickPad(t); // 천원 단위 빠른입력 팝오버 표시
   }, true);
   body.addEventListener('blur', function (e) {
     var t = e.target; if (!t.matches('.money-input')) return;
     var num = parseNum(t.value); t.value = num ? fmt(num) : '';
   }, true);
+
+  // ---------- 천원 단위 빠른입력 팝오버 ----------
+  var quickPad = document.getElementById('quick-pad');
+  var quickCur = document.getElementById('quick-cur');
+  var qpTarget = null; // 현재 편집 중인 money-input
+
+  function qpCanEdit(t) {
+    // 일반 모드에서 이미 저장된 값이 있으면 편집 불가(관리자만)
+    var k = cellKey(t.getAttribute('data-m'), t.getAttribute('data-d'));
+    return isAdmin || !state.cells[k];
+  }
+
+  function openQuickPad(t) {
+    if (!qpCanEdit(t)) { quickPad.classList.add('hidden'); qpTarget = null; return; }
+    qpTarget = t;
+    quickCur.textContent = fmt(parseNum(t.value));
+    positionQuickPad(t);
+    quickPad.classList.remove('hidden');
+  }
+
+  function positionQuickPad(t) {
+    var r = t.getBoundingClientRect();
+    var padW = 236;
+    // 입력칸 바로 아래에 배치, 화면 밖으로 나가지 않게 보정
+    var left = r.left + (r.width / 2) - (padW / 2);
+    if (left < 8) left = 8;
+    if (left + padW > window.innerWidth - 8) left = window.innerWidth - 8 - padW;
+    var top = r.bottom + 6;
+    // 아래 공간이 부족하면 위쪽에 표시
+    if (top + 150 > window.innerHeight) top = r.top - 156;
+    quickPad.style.left = left + 'px';
+    quickPad.style.top = top + 'px';
+  }
+
+  function applyQuickValue(num) {
+    if (!qpTarget) return;
+    if (num > MAX_MONEY) num = MAX_MONEY;
+    if (num < 0) num = 0;
+    var k = cellKey(qpTarget.getAttribute('data-m'), qpTarget.getAttribute('data-d'));
+    if (num) state.cells[k] = num; else delete state.cells[k];
+    qpTarget.value = num ? String(num) : '';
+    qpTarget.classList.toggle('has-val', !!num);
+    quickCur.textContent = fmt(num);
+    refreshTotals(); save();
+  }
+
+  function closeQuickPad() { quickPad.classList.add('hidden'); qpTarget = null; }
+
+  quickPad.addEventListener('mousedown', function (e) { e.preventDefault(); }); // 입력칸 blur 방지
+  quickPad.addEventListener('click', function (e) {
+    var add = e.target.closest('[data-add]');
+    var clr = e.target.closest('[data-clear]');
+    var done = e.target.closest('.qp-done');
+    if (add) {
+      if (!qpTarget) return;
+      applyQuickValue(parseNum(qpTarget.value) + Number(add.getAttribute('data-add')));
+    } else if (clr) {
+      applyQuickValue(0);
+    } else if (done) {
+      var tv = qpTarget; closeQuickPad();
+      if (tv) { var n = parseNum(tv.value); tv.value = n ? fmt(n) : ''; }
+    }
+  });
+  // 팝오버·입력칸 바깥을 누르면 닫기
+  document.addEventListener('mousedown', function (e) {
+    if (quickPad.classList.contains('hidden')) return;
+    if (e.target.closest('#quick-pad')) return;
+    if (e.target.closest('.money-input')) return;
+    closeQuickPad();
+  });
+  window.addEventListener('resize', function () { if (qpTarget) positionQuickPad(qpTarget); });
+  document.getElementById('table-wrap').addEventListener('scroll', function () { if (qpTarget) positionQuickPad(qpTarget); });
 
   // ---------- 회원/날짜 삭제 ----------
   body.addEventListener('click', function (e) {

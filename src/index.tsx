@@ -105,6 +105,22 @@ app.get('/', (c) => {
     </div>
   </div>
 
+  <!-- 금액 빠른입력 팝오버 (천원 단위) -->
+  <div id="quick-pad" class="quick-pad hidden">
+    <div class="quick-pad-cur"><span id="quick-cur">0</span> 원</div>
+    <div class="quick-pad-btns">
+      <button class="qp-btn qp-add" data-add="1000">+1천</button>
+      <button class="qp-btn qp-add" data-add="2000">+2천</button>
+      <button class="qp-btn qp-add" data-add="3000">+3천</button>
+      <button class="qp-btn qp-add" data-add="5000">+5천</button>
+      <button class="qp-btn qp-add" data-add="10000">+1만</button>
+      <button class="qp-btn qp-clear" data-clear="1"><i class="fas fa-eraser"></i> 지움</button>
+    </div>
+    <div class="quick-pad-foot">
+      <button class="qp-done"><i class="fas fa-check"></i> 완료</button>
+    </div>
+  </div>
+
   <!-- 이미지 크게 보기 -->
   <div id="img-modal" class="modal hidden">
     <div class="img-view">

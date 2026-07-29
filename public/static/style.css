@@ -349,6 +349,42 @@ html, body {
   border-radius: 50%; background: #fff; border: none; cursor: pointer; font-size: 16px; color: var(--text);
 }
 
+/* ===== 천원 단위 빠른입력 팝오버 ===== */
+.quick-pad {
+  position: fixed; z-index: 90;
+  width: 236px;
+  background: #fff;
+  border: 1px solid var(--grid-strong);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(15,81,50,.22);
+  padding: 10px;
+  animation: qp-pop .12s ease-out;
+}
+@keyframes qp-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.quick-pad-cur {
+  text-align: center; font-size: 17px; font-weight: 800; color: var(--red);
+  background: var(--total-bg); border-radius: 8px; padding: 7px 0; margin-bottom: 9px;
+  font-variant-numeric: tabular-nums;
+}
+.quick-pad-cur span { font-size: 19px; }
+.quick-pad-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.qp-btn {
+  border: none; border-radius: 9px; padding: 12px 0;
+  font-size: 15px; font-weight: 800; cursor: pointer;
+  background: var(--green-soft); color: var(--green-dark);
+  transition: transform .05s, filter .15s;
+}
+.qp-btn:hover { filter: brightness(.96); }
+.qp-btn:active { transform: scale(.93); }
+.qp-clear { background: #ffe0e0; color: var(--red); }
+.quick-pad-foot { margin-top: 9px; }
+.qp-done {
+  width: 100%; border: none; border-radius: 9px; padding: 11px 0;
+  font-size: 15px; font-weight: 800; cursor: pointer;
+  background: var(--green); color: #fff;
+}
+.qp-done:active { transform: scale(.97); }
+
 .hidden { display: none !important; }
 
 /* ===== Mobile first: 좁은 화면 최적화 ===== */
