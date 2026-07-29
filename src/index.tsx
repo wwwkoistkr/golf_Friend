@@ -84,6 +84,29 @@ app.post('/api/assets', async (c) => {
   }
 });
 
+// 이름 수정 (관리자만): { name }
+app.patch('/api/assets/:id', async (c) => {
+  if (!checkAdmin(c)) return c.json({ ok: false, error: 'unauthorized' }, 401);
+  try {
+    const id = c.req.param('id');
+    const key = 'assets/' + id;
+    const obj = await c.env.ASSETS_BUCKET.get(key);
+    if (!obj) return c.json({ ok: false, error: 'not found' }, 404);
+    const body = await c.req.json().catch(() => ({}));
+    const newName = ((body && body.name) || '').toString().trim();
+    if (!newName) return c.json({ ok: false, error: 'no name' }, 400);
+    const prevMeta = (obj.customMetadata || {}) as Record<string, string>;
+    const buf = await (obj.body as any).arrayBuffer ? await (obj.body as any).arrayBuffer() : obj.body;
+    await c.env.ASSETS_BUCKET.put(key, buf, {
+      httpMetadata: obj.httpMetadata,
+      customMetadata: { name: newName, ts: prevMeta.ts || String(Date.now()) }
+    });
+    return c.json({ ok: true, asset: { id, name: newName } });
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e && e.message || e) }, 500);
+  }
+});
+
 // 삭제 (관리자만)
 app.delete('/api/assets/:id', async (c) => {
   if (!checkAdmin(c)) return c.json({ ok: false, error: 'unauthorized' }, 401);
@@ -165,6 +188,22 @@ app.get('/', (c) => {
               <input id="admin-restore" type="file" accept="application/json" hidden />
             </label>
             <button id="admin-reset" class="btn btn-red"><i class="fas fa-trash-can"></i> 정산표 완전 초기화</button>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <h3><i class="fas fa-pen-to-square"></i> 화면 문구 수정</h3>
+          <p class="admin-desc"><i class="fas fa-circle-info"></i> 앱 화면에 보이는 <b>제목과 항목 이름</b>을 직접 바꿀 수 있습니다. 저장하면 모든 화면에 바로 반영됩니다.</p>
+          <div class="label-edit">
+            <label class="lbl-row"><span>상단 제목</span><input id="lbl-title" type="text" maxlength="24" placeholder="골프 페널티 정산표" /></label>
+            <label class="lbl-row"><span>날짜칸 의미</span><input id="lbl-lost" type="text" maxlength="12" placeholder="잃은 돈" /></label>
+            <label class="lbl-row"><span>이름 열 제목</span><input id="lbl-name" type="text" maxlength="12" placeholder="회원 이름" /></label>
+            <label class="lbl-row"><span>번호 열 제목</span><input id="lbl-phone" type="text" maxlength="12" placeholder="양지번호" /></label>
+            <label class="lbl-row"><span>합계 열 제목</span><input id="lbl-total" type="text" maxlength="12" placeholder="합계" /></label>
+          </div>
+          <div class="admin-btns">
+            <button id="lbl-save" class="btn btn-green"><i class="fas fa-check"></i> 문구 저장</button>
+            <button id="lbl-reset" class="btn btn-gray"><i class="fas fa-rotate-left"></i> 기본값으로</button>
           </div>
         </div>
 

@@ -32,7 +32,8 @@
           dates: (d.dates && d.dates.length) ? d.dates : [makeDate(todayIso())],
           cells: d.cells || {},
           manager: d.manager || { name: '', phone: '' },
-          widths: d.widths || {}
+          widths: d.widths || {},
+          labels: mergeLabels(d.labels)   // 화면 문구(제목/라벨) — 관리자 수정 가능
           // assets(자료실 이미지)는 이제 서버(R2)에 저장 → localStorage에 두지 않음
         };
       }
@@ -40,9 +41,32 @@
     return {
       members: makeDefaultMembers(),
       dates: [makeDate(todayIso())],  // 골프 친 날짜 기본 1개
-      cells: {}, manager: { name: '', phone: '' }, widths: {}
+      cells: {}, manager: { name: '', phone: '' }, widths: {}, labels: mergeLabels(null)
     };
   }
+  // 화면에 쓰이는 문구 기본값 (관리자 모드에서 수정 가능)
+  function defaultLabels() {
+    return {
+      title: '골프 페널티 정산표',        // 상단 제목
+      lost: '잃은 돈',                     // 날짜 칸 안 금액의 의미
+      colName: '회원 이름',                // 이름 열 제목
+      colPhone: '양지번호',                // 번호 열 제목
+      colTotal: '합계'                     // 합계 열 제목
+    };
+  }
+  // 저장된 labels에 기본값을 덮어씌워 항상 모든 키가 존재하도록 병합
+  function mergeLabels(saved) {
+    var def = defaultLabels();
+    if (!saved || typeof saved !== 'object') return def;
+    var out = {};
+    Object.keys(def).forEach(function (k) {
+      out[k] = (typeof saved[k] === 'string' && saved[k].trim()) ? saved[k] : def[k];
+    });
+    return out;
+  }
+  // 개별 라벨 읽기 (없으면 기본값)
+  function lostLabel() { return (state.labels && state.labels.lost) || '잃은 돈'; }
+  function lbl(key) { return (state.labels && state.labels[key]) || defaultLabels()[key]; }
   function makeDefaultMembers() {
     var arr = [];
     for (var i = 0; i < DEFAULT_ROWS; i++) arr.push({ id: uid(), name: '', phone: '' });
@@ -77,9 +101,17 @@
 
   function render() {
     _vd = computeVisibleDates();
+    applyLabels();
     renderHead(); renderBody(); renderFoot(); applyWidths();
     // 표 너비가 바뀌면 상단 헤더(버튼 영역)도 그 길이에 맞춰 확장
     requestAnimationFrame(syncHeaderWidth);
+  }
+
+  // 상단 제목 등 정적 DOM에 편집된 문구를 반영
+  function applyLabels() {
+    var h1 = document.querySelector('.app-header h1');
+    if (h1) h1.innerHTML = '<i class="fas fa-golf-ball-tee"></i> ' + escapeHtml(lbl('title'));
+    if (document.title !== lbl('title')) document.title = lbl('title');
   }
 
   // 표가 옆으로 길어질수록 상단 헤더 내부 폭을 표 너비만큼 넓혀
@@ -104,8 +136,11 @@
 
     var MAX_VISIBLE = 3; // 화면에 보이는 날짜는 최대 약 3일 + 합계
 
-    var wrap = document.getElementById('table-wrap');
-    var avail = (wrap ? wrap.clientWidth : window.innerWidth) - 24; // 여유
+    // 표(table-wrap)는 이제 내용만큼만 좁아지므로 그 폭을 기준으로 쓰면
+    // 접힘 계산이 좁게 갇힌다. 부모(.app-main) 또는 화면 폭을 기준으로 계산.
+    var main = document.getElementById('view-sheet');
+    var mainW = main ? main.clientWidth : 0;
+    var avail = (mainW || window.innerWidth) - 24; // 여유
     // 고정 열(No/이름/양지번호/합계) 폭을 뺀 나머지에 날짜를 채움
     var noW = cssPx('--w-no', 54), nameW = colW('name', '--w-name', 132),
         phoneW = colW('phone', '--w-phone', 96), totalW = cssPx('--w-total', 110);
@@ -156,8 +191,8 @@
   function renderHead() {
     var h = '<tr>';
     h += '<th class="col-no">No</th>';
-    h += '<th class="col-name" data-col="name"' + wStyle('name') + '>회원 이름<span class="col-resize" data-rz="name"></span></th>';
-    h += '<th class="col-phone" data-col="phone"' + wStyle('phone') + '>양지번호<span class="col-resize" data-rz="phone"></span></th>';
+    h += '<th class="col-name" data-col="name"' + wStyle('name') + '>' + escapeHtml(lbl('colName')) + '<span class="col-resize" data-rz="name"></span></th>';
+    h += '<th class="col-phone" data-col="phone"' + wStyle('phone') + '>' + escapeHtml(lbl('colPhone')) + '<span class="col-resize" data-rz="phone"></span></th>';
     // 접힌 날짜가 있으면 맨 앞에 '···N일' 접힘 열을 표시(누르면 전체 펼침)
     if (_vd.hiddenCount > 0) {
       h += '<th class="col-fold" title="숨겨진 날짜 ' + _vd.hiddenCount + '개 · 눌러서 전체 펼치기">' +
@@ -169,11 +204,12 @@
         '<div class="date-head">' +
         '<span class="date-text">' + fmtDate(d.iso) + '</span>' +
         '<span class="date-sub">' + fmtDateFull(d.iso) + '</span>' +
+        '<span class="date-lost">' + escapeHtml(lostLabel()) + '</span>' +
         (isAdmin ? '<button class="date-del" data-del-date="' + d.id + '" title="이 날짜 삭제"><i class="fas fa-xmark"></i></button>' : '') +
         '</div>' +
         '<span class="col-resize" data-rz="date:' + d.id + '"></span></th>';
     });
-    h += '<th class="col-total">합계</th>';
+    h += '<th class="col-total">' + escapeHtml(lbl('colTotal')) + '</th>';
     h += '</tr>';
     head.innerHTML = h;
   }
@@ -551,6 +587,7 @@
       state.members = makeDefaultMembers();
       state.dates = [makeDate(todayIso())];
       state.cells = {}; state.manager = { name: '', phone: '' }; state.widths = {};
+      state.labels = defaultLabels();
       mgrName.value = ''; mgrPhone.value = '';
       collapseEnabled = true;
       save(); render();
@@ -686,9 +723,40 @@
       '<div class="summary-item"><div class="num">' + state.dates.length + '</div><div class="lbl">골프 날짜</div></div>' +
       '<div class="summary-item"><div class="num">' + fmt(totalPenalty) + '</div><div class="lbl">누적 페널티(원)</div></div>' +
       '<div class="summary-item"><div class="num" id="asset-count-num">' + assetsCache.length + '</div><div class="lbl">자료 개수</div></div>';
+    // 화면 문구 편집칸에 현재 값 채우기
+    fillLabelInputs();
     // 서버(R2)에서 자료실 목록을 불러와 렌더
     loadAssetsFromServer();
   }
+
+  // ---------- 화면 문구(라벨) 수정 ----------
+  function fillLabelInputs() {
+    var map = { 'lbl-title': 'title', 'lbl-lost': 'lost', 'lbl-name': 'colName', 'lbl-phone': 'colPhone', 'lbl-total': 'colTotal' };
+    Object.keys(map).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.value = lbl(map[id]);
+    });
+  }
+  (function wireLabelEditor() {
+    var saveBtn = document.getElementById('lbl-save');
+    var resetBtn = document.getElementById('lbl-reset');
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+      if (!isAdmin) { alert('문구 수정은 관리자만 할 수 있습니다.'); return; }
+      var get = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+      state.labels = mergeLabels({
+        title: get('lbl-title'), lost: get('lbl-lost'),
+        colName: get('lbl-name'), colPhone: get('lbl-phone'), colTotal: get('lbl-total')
+      });
+      save(); fillLabelInputs(); render();
+      alert('화면 문구를 저장했습니다.');
+    });
+    if (resetBtn) resetBtn.addEventListener('click', function () {
+      if (!isAdmin) return;
+      if (!confirm('화면 문구를 모두 기본값으로 되돌릴까요?')) return;
+      state.labels = defaultLabels();
+      save(); fillLabelInputs(); render();
+    });
+  })();
 
   // 서버에서 자료실 목록 로드
   function loadAssetsFromServer() {
@@ -714,6 +782,7 @@
     assetsCache.forEach(function (a) {
       h += '<div class="asset-item">' +
         (isAdmin ? '<button class="asset-del" data-del-asset="' + a.id + '" title="삭제"><i class="fas fa-trash"></i></button>' : '') +
+        (isAdmin ? '<button class="asset-edit" data-edit-asset="' + a.id + '" title="이름 수정"><i class="fas fa-pen"></i></button>' : '') +
         '<img src="' + a.url + '" alt="' + escapeHtml(a.name) + '" data-view="' + a.id + '" loading="lazy" />' +
         '<div class="asset-cap">' + escapeHtml(a.name) + '</div>' +
         '</div>';
@@ -755,6 +824,29 @@
 
   // 자료 삭제 / 크게보기
   document.getElementById('asset-list').addEventListener('click', function (e) {
+    var edit = e.target.closest('[data-edit-asset]');
+    if (edit) {
+      if (!isAdmin) return;
+      var eid = edit.getAttribute('data-edit-asset');
+      var cur = null; for (var j = 0; j < assetsCache.length; j++) if (assetsCache[j].id === eid) cur = assetsCache[j];
+      var newName = prompt('자료 이름을 수정하세요.', (cur && cur.name) || '');
+      if (newName == null) return;
+      newName = newName.trim();
+      if (!newName) { alert('이름을 입력해 주세요.'); return; }
+      fetch('/api/assets/' + encodeURIComponent(eid), {
+        method: 'PATCH',
+        headers: { 'x-admin-key': adminKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName })
+      })
+        .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
+        .then(function (res) {
+          if (res.status === 401) { alert('관리자 인증에 실패했습니다. 다시 로그인해 주세요.'); return; }
+          if (!res.d || !res.d.ok) { alert('이름 수정 실패: ' + ((res.d && res.d.error) || '오류')); return; }
+          loadAssetsFromServer();
+        })
+        .catch(function () { alert('네트워크 오류로 이름 수정에 실패했습니다.'); });
+      return;
+    }
     var del = e.target.closest('[data-del-asset]');
     if (del) {
       if (!isAdmin) return;
@@ -800,7 +892,7 @@
           members: d.members || makeDefaultMembers(),
           dates: (d.dates && d.dates.length) ? d.dates : [makeDate(todayIso())],
           cells: d.cells || {}, manager: d.manager || { name: '', phone: '' },
-          widths: d.widths || {}
+          widths: d.widths || {}, labels: mergeLabels(d.labels)
           // 자료실 이미지는 서버(R2)에 있으므로 복원 대상이 아님
         };
         save(); mgrName.value = state.manager.name || ''; mgrPhone.value = state.manager.phone || '';

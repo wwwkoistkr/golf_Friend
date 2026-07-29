@@ -166,6 +166,11 @@ html, body {
   -webkit-overflow-scrolling: touch;
   max-height: calc(100vh - 150px);
   box-shadow: 0 6px 20px rgba(15,81,50,.10);
+  /* 표(합계 열까지)만큼만 폭을 차지하도록 축소 → 합계 오른쪽 흰 여백 제거.
+     화면보다 넓어지면 100%로 제한되어 가로 스크롤됨. */
+  width: -moz-fit-content;
+  width: fit-content;
+  max-width: 100%;
 }
 .sheet {
   border-collapse: separate;
@@ -206,6 +211,13 @@ html, body {
 .date-head { display: flex; flex-direction: column; align-items: center; gap: 0; position: relative; }
 .date-head .date-text { font-size: 14px; font-weight: 800; }
 .date-head .date-sub { font-size: 10px; opacity: .8; }
+/* 날짜 칸 금액의 의미(예: '잃은 돈')를 헤더에 작게 표기 */
+.date-head .date-lost {
+  margin-top: 2px; font-size: 10px; font-weight: 700;
+  color: #3a2a00; background: var(--gold);
+  border-radius: 8px; padding: 1px 7px; line-height: 1.35;
+  white-space: nowrap;
+}
 .date-del {
   position: absolute; top: -4px; right: -4px;
   background: rgba(0,0,0,.18); border: none; color: #fff;
@@ -385,7 +397,25 @@ html, body {
   background: rgba(211,47,47,.9); color: #fff; border: none;
   width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 12px;
 }
+.asset-item .asset-edit {
+  position: absolute; top: 6px; left: 6px;
+  background: rgba(21,115,71,.92); color: #fff; border: none;
+  width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 11px;
+}
+.asset-item .asset-edit:hover { background: var(--green-dark); }
 .asset-empty { color: var(--muted); font-size: 14px; padding: 20px; text-align: center; grid-column: 1/-1; }
+
+/* ===== 화면 문구 수정 ===== */
+.label-edit { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 12px; }
+.label-edit .lbl-row { display: flex; align-items: center; gap: 10px; }
+.label-edit .lbl-row span {
+  flex: 0 0 96px; font-size: 13px; font-weight: 700; color: var(--green-dark);
+}
+.label-edit .lbl-row input {
+  flex: 1; border: 1px solid var(--grid); border-radius: 6px;
+  padding: 8px 10px; font-size: 14px; min-width: 0;
+}
+.label-edit .lbl-row input:focus { outline: 2px solid var(--green); border-color: var(--green); }
 
 /* ===== Modal ===== */
 .modal {
