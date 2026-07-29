@@ -71,6 +71,19 @@
 
   function render() {
     renderHead(); renderBody(); renderFoot(); applyWidths();
+    // 표 너비가 바뀌면 상단 헤더(버튼 영역)도 그 길이에 맞춰 확장
+    requestAnimationFrame(syncHeaderWidth);
+  }
+
+  // 표가 옆으로 길어질수록 상단 헤더 내부 폭을 표 너비만큼 넓혀
+  // 버튼들이 "날짜가 늘어나는 길이만큼" 그 위에 자리하도록 함.
+  function syncHeaderWidth() {
+    var sheet = document.getElementById('sheet');
+    var inner = document.getElementById('app-header-inner');
+    if (!sheet || !inner) return;
+    var tableW = sheet.getBoundingClientRect().width;
+    // 좌우 패딩(28px)을 더해 표 오른쪽 끝까지 헤더가 이어지도록
+    inner.style.minWidth = (tableW + 28) + 'px';
   }
 
   function wStyle(key) { return state.widths[key] ? (' style="width:' + state.widths[key] + 'px;min-width:' + state.widths[key] + 'px"') : ''; }
@@ -108,12 +121,12 @@
         '</td>';
       var nameLocked = !isAdmin && !!m.name;
       var phoneLocked = !isAdmin && !!m.phone;
-      h += '<td class="cell-name"' + wStyle('name') + '><input type="text" maxlength="6" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름6자" ' + (nameLocked ? 'readonly' : '') + ' /></td>';
-      h += '<td class="cell-phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" maxlength="6" class="' + inputCls('phone-input', !!m.phone) + '" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="번호6자" ' + (phoneLocked ? 'readonly' : '') + ' /></td>';
+      h += '<td class="cell-name" data-col="name"' + wStyle('name') + '><input type="text" maxlength="6" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름6자" ' + (nameLocked ? 'readonly' : '') + ' /></td>';
+      h += '<td class="cell-phone" data-col="phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" maxlength="6" class="' + inputCls('phone-input', !!m.phone) + '" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="번호6자" ' + (phoneLocked ? 'readonly' : '') + ' /></td>';
       state.dates.forEach(function (d) {
         var val = state.cells[cellKey(m.id, d.id)];
         var locked = !isAdmin && !!val;
-        h += '<td class="cell-money"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" maxlength="7" data-m="' + m.id + '" data-d="' + d.id + '" class="' + inputCls('money-input', !!val) + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0" ' + (locked ? 'readonly' : '') + ' /></td>';
+        h += '<td class="cell-money" data-col="date:' + d.id + '"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" maxlength="7" data-m="' + m.id + '" data-d="' + d.id + '" class="' + inputCls('money-input', !!val) + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0" ' + (locked ? 'readonly' : '') + ' /></td>';
       });
       h += '<td class="cell-total" data-total-member="' + m.id + '">' + fmt(memberTotal(m.id)) + '</td>';
       h += '</tr>';
@@ -124,7 +137,7 @@
   function renderFoot() {
     var h = '<tr>';
     h += '<td class="foot-label" colspan="3"><i class="fas fa-calculator"></i>날짜별 합계</td>';
-    state.dates.forEach(function (d) { h += '<td class="foot-date" data-total-date="' + d.id + '"' + wStyle('date:' + d.id) + '>' + fmt(dateTotal(d.id)) + '</td>'; });
+    state.dates.forEach(function (d) { h += '<td class="foot-date" data-col="date:' + d.id + '" data-total-date="' + d.id + '"' + wStyle('date:' + d.id) + '>' + fmt(dateTotal(d.id)) + '</td>'; });
     h += '<td class="foot-grand">' + fmt(grandTotal()) + '</td>';
     h += '</tr>';
     foot.innerHTML = h;
@@ -258,8 +271,20 @@
     if (e.target.closest('.money-input')) return;
     closeQuickPad();
   });
-  window.addEventListener('resize', function () { if (qpTarget) positionQuickPad(qpTarget); });
-  document.getElementById('table-wrap').addEventListener('scroll', function () { if (qpTarget) positionQuickPad(qpTarget); });
+  window.addEventListener('resize', function () { if (qpTarget) positionQuickPad(qpTarget); syncHeaderWidth(); });
+  // 표를 가로로 스크롤하면 상단 헤더도 같은 위치로 스크롤 → 버튼이 표 위를 따라감
+  var tableWrapEl = document.getElementById('table-wrap');
+  var appHeaderEl = document.getElementById('app-header');
+  tableWrapEl.addEventListener('scroll', function () {
+    if (qpTarget) positionQuickPad(qpTarget);
+    if (appHeaderEl) appHeaderEl.scrollLeft = tableWrapEl.scrollLeft;
+  });
+  // 헤더를 직접 스크롤해도 표가 같이 움직이도록(양방향 동기화)
+  if (appHeaderEl) {
+    appHeaderEl.addEventListener('scroll', function () {
+      tableWrapEl.scrollLeft = appHeaderEl.scrollLeft;
+    });
+  }
 
   // ---------- 회원/날짜 삭제 ----------
   body.addEventListener('click', function (e) {
@@ -295,7 +320,14 @@
     var iso = input.trim(); if (!iso) iso = todayIso();
     if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(iso)) { var p = iso.split('-'); iso = p[0] + '-' + p[1].padStart(2, '0') + '-' + p[2].padStart(2, '0'); }
     else { var dt = new Date(iso); if (isNaN(dt.getTime())) { alert('날짜 형식이 올바르지 않습니다.\n예: 2026-07-28'); return; } var q = function (n) { return String(n).padStart(2, '0'); }; iso = dt.getFullYear() + '-' + q(dt.getMonth() + 1) + '-' + q(dt.getDate()); }
-    state.dates.push({ id: uid(), iso: iso });
+    var newId = uid();
+    // 새 날짜 열은 "직전 날짜 열과 같은 너비"로 생성 (사용자가 조절한 폭을 그대로 상속)
+    if (state.dates.length) {
+      var lastDate = state.dates[state.dates.length - 1];
+      var lastW = state.widths['date:' + lastDate.id];
+      if (lastW) state.widths['date:' + newId] = lastW;
+    }
+    state.dates.push({ id: newId, iso: iso });
     state.dates.sort(function (a, b) { return a.iso < b.iso ? -1 : a.iso > b.iso ? 1 : 0; });
     save(); render();
     document.getElementById('table-wrap').scrollLeft = 99999;
@@ -358,7 +390,7 @@
     state.widths[rz.key] = w;
     document.querySelectorAll('[data-col="' + rz.key + '"]').forEach(function (el) { el.style.width = w + 'px'; el.style.minWidth = w + 'px'; });
   }
-  function endResize() { if (rz) { rz = null; document.body.style.userSelect = ''; document.body.style.cursor = ''; save(); } }
+  function endResize() { if (rz) { rz = null; document.body.style.userSelect = ''; document.body.style.cursor = ''; save(); syncHeaderWidth(); } }
 
   head.addEventListener('mousedown', function (e) {
     var handle = e.target.closest('.col-resize'); if (!handle) return;
@@ -576,4 +608,6 @@
   // ---------- 시작 ----------
   updateAdminBtn();
   render();
+  window.addEventListener('load', syncHeaderWidth);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(syncHeaderWidth); }
 })();

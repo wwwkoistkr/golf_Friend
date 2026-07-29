@@ -59,18 +59,29 @@ html, body {
   position: sticky; top: 0; z-index: 30;
   background: linear-gradient(135deg, #157347 0%, #0f5132 100%);
   color: #fff;
-  padding: 11px 14px;
-  /* 제목 바로 옆에 버튼을 붙임(space-between 제거) */
-  display: flex; align-items: center; justify-content: flex-start;
-  gap: 16px; flex-wrap: wrap;
   box-shadow: 0 3px 12px rgba(15,81,50,.28);
+  /* 표가 옆으로 길어지면 헤더도 같이 가로 스크롤 → 버튼이 표 위를 따라감 */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;   /* Firefox: 헤더 스크롤바 숨김 */
+}
+.app-header::-webkit-scrollbar { display: none; } /* Chrome/Safari: 숨김 */
+/* 헤더 안쪽 내용(제목+버튼). min-width를 JS가 표 너비에 맞춰 늘림 */
+.app-header-inner {
+  padding: 11px 14px;
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 16px; flex-wrap: nowrap;   /* 한 줄로 이어져 표 길이만큼 확장 */
+  min-width: 100%;
+  width: max-content;
 }
 .app-header h1 {
   font-size: 18px; font-weight: 800;
   display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  flex-shrink: 0;
 }
 .app-header h1 i { color: var(--gold); }
-.header-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.header-actions { display: flex; gap: 6px; flex-wrap: nowrap; flex-shrink: 0; }
 
 .btn {
   border: none; border-radius: 9px;

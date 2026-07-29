@@ -108,14 +108,16 @@ app.get('/', (c) => {
   <link href="/static/style.css" rel="stylesheet">
 </head>
 <body>
-  <header class="app-header">
-    <h1><i class="fas fa-golf-ball-tee"></i> 골프 페널티 정산표</h1>
-    <div class="header-actions">
-      <button id="btn-add-member" class="btn btn-light"><i class="fas fa-user-plus"></i><span class="btn-text"> 회원추가</span></button>
-      <button id="btn-add-date" class="btn btn-light"><i class="fas fa-calendar-plus"></i><span class="btn-text"> 날짜추가</span></button>
-      <button id="btn-export" class="btn btn-light"><i class="fas fa-file-csv"></i><span class="btn-text"> 엑셀저장</span></button>
-      <button id="btn-clear" class="btn btn-light"><i class="fas fa-rotate-left"></i><span class="btn-text"> 초기화</span></button>
-      <button id="btn-admin" class="btn btn-gold"><i class="fas fa-user-shield"></i><span class="btn-text"> 관리자</span></button>
+  <header class="app-header" id="app-header">
+    <div class="app-header-inner" id="app-header-inner">
+      <h1><i class="fas fa-golf-ball-tee"></i> 골프 페널티 정산표</h1>
+      <div class="header-actions">
+        <button id="btn-add-member" class="btn btn-light"><i class="fas fa-user-plus"></i><span class="btn-text"> 회원추가</span></button>
+        <button id="btn-add-date" class="btn btn-light"><i class="fas fa-calendar-plus"></i><span class="btn-text"> 날짜추가</span></button>
+        <button id="btn-export" class="btn btn-light"><i class="fas fa-file-csv"></i><span class="btn-text"> 엑셀저장</span></button>
+        <button id="btn-clear" class="btn btn-light"><i class="fas fa-rotate-left"></i><span class="btn-text"> 초기화</span></button>
+        <button id="btn-admin" class="btn btn-gold"><i class="fas fa-user-shield"></i><span class="btn-text"> 관리자</span></button>
+      </div>
     </div>
   </header>
 
