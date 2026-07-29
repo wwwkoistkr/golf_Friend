@@ -219,13 +219,33 @@ html, body {
 }
 .col-resize:hover::after { background: #fff; }
 
+/* ===== 좌우 틀 고정(엑셀식) =====
+   No 열은 왼쪽(left:0), 합계 열은 오른쪽(right:0)에 항상 고정.
+   left:0 / right:0 은 오프셋 계산이 없어 흰 빈칸이 생기지 않음(빈칸 버그 회피). */
+.col-no, .cell-no {
+  position: sticky; left: 0; z-index: 6;
+}
+.sheet thead th.col-no { z-index: 14; }      /* 헤더 No: 가로+세로 모두 위 */
+/* 풋 No: 왼쪽+아래 모두 고정. 폭·배경을 No 열과 동일하게 */
+.sheet tfoot td.foot-no {
+  position: sticky; left: 0; bottom: 0; z-index: 12;
+  width: var(--w-no); min-width: var(--w-no);
+  background: var(--green-soft);
+  border-right: 1px solid var(--grid);
+}
+.col-total, .cell-total {
+  position: sticky; right: 0; z-index: 6;
+}
+.sheet thead th.col-total { z-index: 14; }
+.sheet tfoot td.foot-grand { position: sticky; right: 0; bottom: 0; z-index: 13; }
+
 .cell-no {
   background: var(--green-soft);
   color: var(--green-dark);
   font-weight: 700;
   text-align: center;
   padding: 0 3px;
-  position: relative;
+  position: sticky; left: 0; z-index: 6;
 }
 .row-del {
   background: transparent; border: none; color: #b0bec5;

@@ -133,7 +133,9 @@
 
   function renderFoot() {
     var h = '<tr>';
-    h += '<td class="foot-label" colspan="3"><i class="fas fa-calculator"></i>날짜별 합계</td>';
+    // No 열은 왼쪽 고정(sticky) 대상이므로 별도 셀로 분리.
+    h += '<td class="foot-no"></td>';
+    h += '<td class="foot-label" colspan="2"><i class="fas fa-calculator"></i>날짜별 합계</td>';
     state.dates.forEach(function (d) { h += '<td class="foot-date" data-col="date:' + d.id + '" data-total-date="' + d.id + '"' + wStyle('date:' + d.id) + '>' + fmt(dateTotal(d.id)) + '</td>'; });
     h += '<td class="foot-grand">' + fmt(grandTotal()) + '</td>';
     h += '</tr>';
