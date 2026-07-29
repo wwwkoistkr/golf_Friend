@@ -69,9 +69,9 @@ html, body {
 .app-header::-webkit-scrollbar { display: none; } /* Chrome/Safari: 숨김 */
 /* 헤더 안쪽 내용(제목+버튼). min-width를 JS가 표 너비에 맞춰 늘림 */
 .app-header-inner {
-  padding: 11px 14px;
+  padding: 8px 14px;   /* 상하 여백 축소 → 버튼을 표(날짜/합계) 쪽으로 더 붙임 */
   display: flex; align-items: center; justify-content: flex-start;
-  gap: 16px; flex-wrap: nowrap;   /* 한 줄로 이어져 표 길이만큼 확장 */
+  gap: 14px; flex-wrap: nowrap;   /* 한 줄로 이어져 표 길이만큼 확장 */
   min-width: 100%;
   width: max-content;
 }
@@ -113,12 +113,19 @@ html, body {
 
 /* ===== Mode banner ===== */
 .mode-banner {
-  border-radius: 8px; padding: 8px 12px; margin-bottom: 8px;
+  border-radius: 8px; padding: 6px 12px; margin-bottom: 6px;
   font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px;
 }
 .mode-banner.mode-user { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
 .mode-banner.mode-admin { background: #fff3e0; color: #e65100; border: 1px solid #ffb74d; }
+.mode-banner.mode-expand { background: #fff8e1; color: #b26a00; border: 1px solid #ffcc66; }
 .mode-banner b { font-weight: 800; }
+.banner-btn {
+  margin-left: auto; border: 1px solid currentColor; background: transparent;
+  color: inherit; font-weight: 700; font-size: 12px; padding: 3px 10px;
+  border-radius: 6px; cursor: pointer;
+}
+.banner-btn:hover { background: rgba(0,0,0,.06); }
 
 /* 잠긴(읽기전용) 입력칸 */
 .money-input.locked, .name-input.locked, .phone-input.locked {
@@ -138,7 +145,7 @@ html, body {
 .manager-bar {
   background: #fff;
   border-bottom: 1px solid var(--grid);
-  padding: 8px 12px;
+  padding: 6px 12px;
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .mgr-label { font-weight: 700; color: var(--green-dark); display: flex; align-items: center; gap: 5px; font-size: 14px; }
@@ -150,7 +157,7 @@ html, body {
 .mgr-hint { color: var(--muted); font-size: 12px; margin-left: auto; }
 
 /* ===== Main / Table ===== */
-.app-main { padding: 10px; }
+.app-main { padding: 8px 10px 10px; }
 .table-wrap {
   overflow: auto;
   background: #fff;
@@ -277,6 +284,29 @@ html, body {
 .sheet tbody tr:nth-child(even) .cell-money { background: #fafbfc; }
 .sheet tbody tr:nth-child(even) .cell-no { background: #dcefe4; }
 .sheet tbody tr:hover td { background: #f1f8f4; }
+
+/* --- 접힘(숨김 날짜) 열 --- */
+/* 날짜가 많아 화면을 넘어가면 가운데 오래된 날짜를 이 한 열로 접어서 표시.
+   눌러서 전체 펼치기 가능. 폭은 좁게. */
+.col-fold, .cell-fold, .foot-fold {
+  width: 34px; min-width: 34px; max-width: 34px;
+  cursor: pointer;
+  padding: 0 2px !important;
+}
+.sheet thead th.col-fold {
+  background: #0f5132; color: #ffe082;
+}
+.fold-head { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+.fold-dots { font-size: 15px; font-weight: 900; letter-spacing: 1px; }
+.fold-cnt { font-size: 9px; opacity: .9; }
+.cell-fold {
+  background: #f1faf4; color: #6b8f7c;
+  text-align: right; font-size: 11px; font-weight: 700;
+  border-left: 1px dashed #b5d8c4; border-right: 1px dashed #b5d8c4;
+}
+.sheet tbody tr:nth-child(even) .cell-fold { background: #e7f3ec; }
+.foot-fold { background: #dbeee2; color: var(--green-dark); font-size: 11px; }
+.col-fold:hover, .cell-fold:hover { filter: brightness(.97); }
 
 /* --- Total column (right) --- */
 .cell-total {

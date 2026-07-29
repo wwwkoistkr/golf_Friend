@@ -164,6 +164,7 @@ app.get('/', (c) => {
             <label class="btn btn-gray file-btn"><i class="fas fa-upload"></i> 백업 복원
               <input id="admin-restore" type="file" accept="application/json" hidden />
             </label>
+            <button id="admin-reset" class="btn btn-red"><i class="fas fa-trash-can"></i> 정산표 완전 초기화</button>
           </div>
         </div>
 

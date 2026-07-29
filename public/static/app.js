@@ -13,6 +13,12 @@
   var assetsCache = [];    // 서버(R2)에서 받아온 자료실 목록
   var assetsLoaded = false;
 
+  // 날짜가 많아 화면을 넘어가면 가운데 오래된 날짜 열을 자동으로 접어(숨겨)
+  // 회원이름·양지번호·최근 날짜 몇 개·합계가 한 화면에 보이게 함.
+  // (합계 금액은 접힌 날짜까지 전부 포함해 그대로 계산)
+  var collapseEnabled = true;   // 접기 사용 여부
+  var expandTimer = null;       // '초기화(펼쳐보기)' 후 자동 복귀 타이머
+
   var state = load();
 
   // ---------- 저장/로드 ----------
@@ -70,6 +76,7 @@
   var foot = document.getElementById('sheet-foot');
 
   function render() {
+    _vd = computeVisibleDates();
     renderHead(); renderBody(); renderFoot(); applyWidths();
     // 표 너비가 바뀌면 상단 헤더(버튼 영역)도 그 길이에 맞춰 확장
     requestAnimationFrame(syncHeaderWidth);
@@ -88,12 +95,73 @@
 
   function wStyle(key) { return state.widths[key] ? (' style="width:' + state.widths[key] + 'px;min-width:' + state.widths[key] + 'px"') : ''; }
 
+  // 현재 화면 폭에서 "최근 날짜 몇 개"를 보여줄 수 있는지 계산.
+  // 반환: { visible: [표시할 date...], hiddenCount: 접힌 개수, hiddenTotal: 접힌 금액합 }
+  function computeVisibleDates() {
+    var dates = state.dates;
+    // 접기 꺼짐 or 날짜가 적으면 전부 표시
+    if (!collapseEnabled) return { visible: dates.slice(), hiddenCount: 0, hiddenIds: [] };
+
+    var wrap = document.getElementById('table-wrap');
+    var avail = (wrap ? wrap.clientWidth : window.innerWidth) - 24; // 여유
+    // 고정 열(No/이름/양지번호/합계) 폭을 뺀 나머지에 날짜를 채움
+    var noW = cssPx('--w-no', 54), nameW = colW('name', '--w-name', 132),
+        phoneW = colW('phone', '--w-phone', 96), totalW = cssPx('--w-total', 110);
+    var fixed = noW + nameW + phoneW + totalW;
+    var foldW = 34; // '···' 접힘 표시 열 폭
+    var room = avail - fixed;
+
+    // 뒤(최근)에서부터 들어갈 수 있는 만큼만 채움
+    var visible = [];
+    var used = 0;
+    for (var i = dates.length - 1; i >= 0; i--) {
+      var dw = colW('date:' + dates[i].id, '--w-date', 92);
+      var reserve = (i > 0) ? foldW : 0; // 앞에 더 있으면 접힘열 자리 확보
+      if (used + dw + reserve <= room || visible.length === 0) {
+        visible.unshift(dates[i]);
+        used += dw;
+      } else {
+        break;
+      }
+    }
+    var visibleIds = {};
+    visible.forEach(function (d) { visibleIds[d.id] = true; });
+    var hiddenIds = [];
+    dates.forEach(function (d) { if (!visibleIds[d.id]) hiddenIds.push(d.id); });
+    return { visible: visible, hiddenCount: hiddenIds.length, hiddenIds: hiddenIds };
+  }
+  // CSS 변수 px값 읽기(없으면 기본)
+  function cssPx(varName, def) {
+    var v = getComputedStyle(document.documentElement).getPropertyValue(varName);
+    var n = parseInt(v, 10); return isNaN(n) ? def : n;
+  }
+  // 열의 실제 지정폭(사용자가 리사이즈했으면 그 값, 아니면 CSS 변수)
+  function colW(key, varName, def) {
+    if (state.widths[key]) return state.widths[key];
+    return cssPx(varName, def);
+  }
+  // 접힌 날짜들의 합계(회원 기준 memberTotal에서 접힌 부분만 필요할 때 사용)
+  function hiddenMemberTotal(mid, hiddenIds) {
+    var s = 0; for (var i = 0; i < hiddenIds.length; i++) s += Number(state.cells[cellKey(mid, hiddenIds[i])]) || 0; return s;
+  }
+  function hiddenGrandTotal(hiddenIds) {
+    var s = 0; state.members.forEach(function (m) { s += hiddenMemberTotal(m.id, hiddenIds); }); return s;
+  }
+
+  var _vd = { visible: [], hiddenCount: 0, hiddenIds: [] }; // 마지막 계산 결과 캐시
+
   function renderHead() {
     var h = '<tr>';
     h += '<th class="col-no">No</th>';
     h += '<th class="col-name" data-col="name"' + wStyle('name') + '>회원 이름<span class="col-resize" data-rz="name"></span></th>';
     h += '<th class="col-phone" data-col="phone"' + wStyle('phone') + '>양지번호<span class="col-resize" data-rz="phone"></span></th>';
-    state.dates.forEach(function (d) {
+    // 접힌 날짜가 있으면 맨 앞에 '···N일' 접힘 열을 표시(누르면 전체 펼침)
+    if (_vd.hiddenCount > 0) {
+      h += '<th class="col-fold" title="숨겨진 날짜 ' + _vd.hiddenCount + '개 · 눌러서 전체 펼치기">' +
+        '<div class="fold-head"><span class="fold-dots">···</span>' +
+        '<span class="fold-cnt">+' + _vd.hiddenCount + '일</span></div></th>';
+    }
+    _vd.visible.forEach(function (d) {
       h += '<th class="col-date" data-col="date:' + d.id + '"' + wStyle('date:' + d.id) + '>' +
         '<div class="date-head">' +
         '<span class="date-text">' + fmtDate(d.iso) + '</span>' +
@@ -121,7 +189,12 @@
         '</td>';
       h += '<td class="cell-name" data-col="name"' + wStyle('name') + '><input type="text" maxlength="6" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름6자" /></td>';
       h += '<td class="cell-phone" data-col="phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" maxlength="6" class="' + inputCls('phone-input', !!m.phone) + '" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="번호6자" /></td>';
-      state.dates.forEach(function (d) {
+      // 접힌 날짜: 각 회원의 접힌 부분 합계를 요약 셀로 표시
+      if (_vd.hiddenCount > 0) {
+        var hSum = hiddenMemberTotal(m.id, _vd.hiddenIds);
+        h += '<td class="cell-fold" title="숨겨진 날짜 합계">' + (hSum ? fmt(hSum) : '') + '</td>';
+      }
+      _vd.visible.forEach(function (d) {
         var val = state.cells[cellKey(m.id, d.id)];
         h += '<td class="cell-money" data-col="date:' + d.id + '"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" maxlength="7" data-m="' + m.id + '" data-d="' + d.id + '" class="' + inputCls('money-input', !!val) + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0" /></td>';
       });
@@ -136,7 +209,11 @@
     // No 열은 왼쪽 고정(sticky) 대상이므로 별도 셀로 분리.
     h += '<td class="foot-no"></td>';
     h += '<td class="foot-label" colspan="2"><i class="fas fa-calculator"></i>날짜별 합계</td>';
-    state.dates.forEach(function (d) { h += '<td class="foot-date" data-col="date:' + d.id + '" data-total-date="' + d.id + '"' + wStyle('date:' + d.id) + '>' + fmt(dateTotal(d.id)) + '</td>'; });
+    if (_vd.hiddenCount > 0) {
+      var hg = hiddenGrandTotal(_vd.hiddenIds);
+      h += '<td class="foot-fold" title="숨겨진 날짜 합계">' + (hg ? fmt(hg) : '') + '</td>';
+    }
+    _vd.visible.forEach(function (d) { h += '<td class="foot-date" data-col="date:' + d.id + '" data-total-date="' + d.id + '"' + wStyle('date:' + d.id) + '>' + fmt(dateTotal(d.id)) + '</td>'; });
     h += '<td class="foot-grand">' + fmt(grandTotal()) + '</td>';
     h += '</tr>';
     foot.innerHTML = h;
@@ -189,6 +266,43 @@
     var t = e.target; if (!t.matches('.money-input')) return;
     var num = parseNum(t.value); t.value = num ? fmt(num) : '';
   }, true);
+
+  // 표 입력칸에서 Enter → 다음 회원(아래 행)의 같은 열로 이동.
+  // 마지막 행에서 Enter면 회원을 자동 추가하고 새 행으로 이동(추가입력처럼 계속 넘어감).
+  body.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var t = e.target;
+    var kind = null, id = null;
+    if (t.matches('.name-input')) { kind = 'name'; id = t.getAttribute('data-name'); }
+    else if (t.matches('.phone-input')) { kind = 'phone'; id = t.getAttribute('data-phone'); }
+    else if (t.matches('.money-input')) { kind = 'money'; id = t.getAttribute('data-m'); }
+    else return;
+    e.preventDefault();
+
+    var idx = -1;
+    for (var i = 0; i < state.members.length; i++) if (state.members[i].id === id) { idx = i; break; }
+    if (idx === -1) return;
+
+    // 마지막 행이면 회원 추가
+    if (idx === state.members.length - 1) {
+      state.members.push({ id: uid(), name: '', phone: '' });
+      save(); render();
+    }
+    // 다음 행의 같은 종류 칸으로 포커스
+    var rows = body.querySelectorAll('tr');
+    var next = rows[idx + 1];
+    if (!next) return;
+    var sel = kind === 'name' ? '.name-input' : kind === 'phone' ? '.phone-input' : '.money-input';
+    var el;
+    if (kind === 'money') {
+      // 금액은 같은 날짜(data-d) 열을 유지
+      var d = t.getAttribute('data-d');
+      el = next.querySelector('.money-input[data-d="' + d + '"]');
+    } else {
+      el = next.querySelector(sel);
+    }
+    if (el) { el.focus(); try { el.select(); } catch (x) {} }
+  });
 
   // ---------- 천원 단위 빠른입력 팝오버 ----------
   var quickPad = document.getElementById('quick-pad');
@@ -258,7 +372,18 @@
     if (e.target.closest('.money-input')) return;
     closeQuickPad();
   });
-  window.addEventListener('resize', function () { if (qpTarget) positionQuickPad(qpTarget); syncHeaderWidth(); });
+  var resizeReRenderTimer = null;
+  window.addEventListener('resize', function () {
+    if (qpTarget) positionQuickPad(qpTarget);
+    syncHeaderWidth();
+    // 화면 폭이 바뀌면 접힘 개수도 달라지므로 다시 렌더(입력 중이면 건너뜀)
+    if (resizeReRenderTimer) clearTimeout(resizeReRenderTimer);
+    resizeReRenderTimer = setTimeout(function () {
+      var ae = document.activeElement;
+      if (ae && (ae.classList && (ae.classList.contains('name-input') || ae.classList.contains('phone-input') || ae.classList.contains('money-input')))) return;
+      if (collapseEnabled) render();
+    }, 250);
+  });
   // 표를 가로로 스크롤하면 상단 헤더도 같은 위치로 스크롤 → 버튼이 표 위를 따라감
   var tableWrapEl = document.getElementById('table-wrap');
   var appHeaderEl = document.getElementById('app-header');
@@ -284,6 +409,14 @@
       save(); render();
     }
   });
+  // 접힘 열('···+N일') 클릭 → 전체 날짜 펼쳐보기(15초 후 자동 복귀)
+  head.addEventListener('click', function (e) {
+    if (e.target.closest('.col-fold')) { expandAllTemporarily(); }
+  });
+  body.addEventListener('click', function (e) {
+    if (e.target.closest('.cell-fold')) { expandAllTemporarily(); }
+  });
+
   head.addEventListener('click', function (e) {
     var del = e.target.closest('[data-del-date]'); if (!del) return;
     var id = del.getAttribute('data-del-date'); var d = null;
@@ -348,18 +481,76 @@
   mgrName.value = state.manager.name || ''; mgrPhone.value = state.manager.phone || '';
   mgrName.addEventListener('input', function () { state.manager.name = mgrName.value; save(); });
   mgrPhone.addEventListener('input', function () { state.manager.phone = mgrPhone.value; save(); });
+  // 담당자 이름 입력 후 Enter → 양지번호로, 양지번호에서 Enter → 표 첫 이름칸으로
+  mgrName.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); mgrPhone.focus(); mgrPhone.select && mgrPhone.select(); } });
+  mgrPhone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      var first = body.querySelector('.name-input');
+      if (first) { first.focus(); try { first.select(); } catch (x) {} }
+    }
+  });
 
-  // ---------- 초기화 ----------
-  document.getElementById('btn-clear').addEventListener('click', function () {
-    if (!isAdmin) { alert('초기화는 관리자만 할 수 있습니다.\n우측 상단 [관리자] 버튼으로 로그인해 주세요.'); return; }
-    if (confirm('정산표(회원/날짜/금액)를 초기화할까요?\n※ 관리자 자료실 이미지는 유지됩니다.')) {
+  // ---------- 초기화(=전체 펼쳐보기) ----------
+  // 버튼을 누르면 접혀 있던 모든 날짜를 펼쳐 보여주고, 약 15초 후 원래(접힘) 상태로 복귀.
+  var EXPAND_SECONDS = 15;
+  function expandAllTemporarily() {
+    collapseEnabled = false;      // 접기 해제 → 전체 표시
+    if (expandTimer) clearTimeout(expandTimer);
+    render();
+    document.getElementById('table-wrap').scrollLeft = 0; // 처음(오래된 날짜)부터 보이게
+    showExpandNotice(EXPAND_SECONDS);
+    expandTimer = setTimeout(function () {
+      collapseEnabled = true;     // 다시 접힘
+      expandTimer = null;
+      render();
+      hideExpandNotice();
+    }, EXPAND_SECONDS * 1000);
+  }
+  // 펼침 상태 안내 배너 + 남은 초 카운트다운
+  var noticeTimer = null;
+  function showExpandNotice(sec) {
+    var banner = document.getElementById('mode-banner');
+    if (!banner) return;
+    banner.dataset.prev = banner.dataset.prev || banner.innerHTML;
+    var left = sec;
+    function paint() {
+      banner.className = 'mode-banner mode-expand';
+      banner.innerHTML = '<i class="fas fa-eye"></i> 전체 날짜를 펼쳐 보는 중 · <b>' + left + '초</b> 후 자동으로 접힙니다 · <button id="collapse-now" class="banner-btn">지금 접기</button>';
+    }
+    paint();
+    if (noticeTimer) clearInterval(noticeTimer);
+    noticeTimer = setInterval(function () {
+      left--; if (left <= 0) { clearInterval(noticeTimer); noticeTimer = null; return; }
+      paint();
+    }, 1000);
+  }
+  function hideExpandNotice() {
+    if (noticeTimer) { clearInterval(noticeTimer); noticeTimer = null; }
+    updateAdminBtn(); // 배너를 원래(모드) 문구로 복원
+  }
+  // '지금 접기' 버튼(배너 안) 클릭
+  document.addEventListener('click', function (e) {
+    if (e.target && e.target.id === 'collapse-now') {
+      if (expandTimer) { clearTimeout(expandTimer); expandTimer = null; }
+      collapseEnabled = true; render(); hideExpandNotice();
+    }
+  });
+
+  document.getElementById('btn-clear').addEventListener('click', expandAllTemporarily);
+
+  // 관리자 전용: 정산표 완전 초기화(데이터 삭제)는 관리자 화면에서 수행
+  function fullReset() {
+    if (!isAdmin) { alert('초기화는 관리자만 할 수 있습니다.'); return; }
+    if (confirm('정산표(회원/날짜/금액)를 완전히 초기화할까요?\n※ 관리자 자료실 이미지는 유지됩니다.')) {
       state.members = makeDefaultMembers();
       state.dates = [makeDate(todayIso())];
       state.cells = {}; state.manager = { name: '', phone: '' }; state.widths = {};
       mgrName.value = ''; mgrPhone.value = '';
+      collapseEnabled = true;
       save(); render();
     }
-  });
+  }
 
   // ---------- CSV ----------
   function exportCsv() {
@@ -586,6 +777,8 @@
 
   // 관리자: CSV / 백업 / 복원
   document.getElementById('admin-export').addEventListener('click', exportCsv);
+  var adminResetBtn = document.getElementById('admin-reset');
+  if (adminResetBtn) adminResetBtn.addEventListener('click', fullReset);
   document.getElementById('admin-backup').addEventListener('click', function () {
     // 정산 데이터(회원/날짜/금액)만 백업. 자료실 이미지는 서버(R2)에 자동 보관됨.
     var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
