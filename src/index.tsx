@@ -208,6 +208,12 @@ app.get('/', (c) => {
         </div>
 
         <div class="admin-card">
+          <h3><i class="fas fa-calendar-days"></i> 날짜 관리 (금액 비우기 · 날짜 삭제)</h3>
+          <p class="admin-desc"><i class="fas fa-circle-info"></i> 등록된 <b>모든 날짜</b> 목록입니다. 날짜별로 <b>그날 금액만 전부 비우거나</b>, <b>날짜 열 자체를 삭제</b>할 수 있습니다. 삭제한 금액은 되돌릴 수 없습니다.</p>
+          <div id="admin-date-list" class="date-manage-list"></div>
+        </div>
+
+        <div class="admin-card">
           <h3><i class="fas fa-images"></i> 자료실 (이미지 · 이름)</h3>
           <p class="admin-desc"><i class="fas fa-cloud"></i> 이미지는 <b>서버(Cloudflare R2)</b>에 저장되어 <b>모든 사람이 함께 보고</b>, 자동으로 <b>영구 보관·백업</b>됩니다. 브라우저를 지워도 사라지지 않습니다. (이미지당 최대 8MB)</p>
           <div class="asset-add">

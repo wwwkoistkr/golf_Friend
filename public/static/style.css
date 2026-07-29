@@ -417,6 +417,22 @@ html, body {
 }
 .label-edit .lbl-row input:focus { outline: 2px solid var(--green); border-color: var(--green); }
 
+/* ===== 날짜 관리(금액 비우기 · 날짜 삭제) ===== */
+.date-manage-list { display: flex; flex-direction: column; gap: 8px; }
+.date-manage-empty { color: var(--muted); font-size: 13px; padding: 8px 2px; }
+.date-manage-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  flex-wrap: wrap;
+  border: 1px solid var(--grid); border-radius: 8px; padding: 10px 12px;
+  background: #fafcfd;
+}
+.date-manage-row .dm-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.date-manage-row .dm-date { font-size: 15px; font-weight: 800; color: var(--green-dark); }
+.date-manage-row .dm-sub { font-size: 12px; color: var(--muted); }
+.date-manage-row .dm-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.date-manage-row .dm-btns .btn { padding: 7px 11px; font-size: 13px; }
+.date-manage-row .dm-clear[disabled] { opacity: .45; cursor: not-allowed; }
+
 /* ===== Modal ===== */
 .modal {
   position: fixed; inset: 0; background: rgba(0,0,0,.5);
@@ -517,6 +533,10 @@ html, body {
   .cell-name input, .cell-phone input, .cell-money input { padding: 9px 3px; font-size: 13px; }
   .admin-cards { grid-template-columns: 1fr; }
   .asset-list { grid-template-columns: repeat(auto-fill, minmax(46%, 1fr)); }
+  /* 날짜 관리: 좁은 화면에서 정보 위 / 버튼 아래로 배치, 버튼은 폭 채움 */
+  .date-manage-row { flex-direction: column; align-items: stretch; }
+  .date-manage-row .dm-btns { width: 100%; }
+  .date-manage-row .dm-btns .btn { flex: 1; justify-content: center; }
 }
 
 /* 큰 화면에서는 자료실 2열 */

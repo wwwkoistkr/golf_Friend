@@ -293,6 +293,7 @@
   }
 
   function findMember(id) { for (var i = 0; i < state.members.length; i++) if (state.members[i].id === id) return state.members[i]; return null; }
+  function findDate(id) { for (var i = 0; i < state.dates.length; i++) if (state.dates[i].id === id) return state.dates[i]; return null; }
 
   // ---------- 입력 ----------
   body.addEventListener('input', function (e) {
@@ -745,9 +746,74 @@
       '<div class="summary-item"><div class="num" id="asset-count-num">' + assetsCache.length + '</div><div class="lbl">자료 개수</div></div>';
     // 화면 문구 편집칸에 현재 값 채우기
     fillLabelInputs();
+    // 날짜 관리 목록(금액 비우기 · 날짜 삭제) 렌더
+    renderDateManage();
     // 서버(R2)에서 자료실 목록을 불러와 렌더
     loadAssetsFromServer();
   }
+
+  // ---------- 날짜 관리(금액 비우기 · 날짜 삭제) ----------
+  // 특정 날짜의 금액 입력 개수(0이 아닌 셀 수)
+  function dateFilledCount(id) {
+    var n = 0;
+    state.members.forEach(function (m) {
+      var v = Number(state.cells[cellKey(m.id, id)]) || 0;
+      if (v) n++;
+    });
+    return n;
+  }
+  function renderDateManage() {
+    var box = document.getElementById('admin-date-list');
+    if (!box) return;
+    if (!state.dates.length) {
+      box.innerHTML = '<div class="date-manage-empty"><i class="fas fa-circle-info"></i> 등록된 날짜가 없습니다.</div>';
+      return;
+    }
+    // 최근 날짜가 위로 오도록 역순 정렬해서 표시
+    var arr = state.dates.slice().sort(function (a, b) { return a.iso < b.iso ? 1 : a.iso > b.iso ? -1 : 0; });
+    var h = '';
+    arr.forEach(function (d) {
+      var filled = dateFilledCount(d.id);
+      var tot = dateTotal(d.id);
+      h += '<div class="date-manage-row">' +
+        '<div class="dm-info">' +
+          '<span class="dm-date">' + escapeHtml(fmtDateFull(d.iso)) + '</span>' +
+          '<span class="dm-sub">' + (filled ? (filled + '명 · 합계 ' + fmt(tot) + '원') : '입력 없음') + '</span>' +
+        '</div>' +
+        '<div class="dm-btns">' +
+          '<button class="btn btn-gray dm-clear" data-clear-date="' + d.id + '"' + (filled ? '' : ' disabled') + '><i class="fas fa-eraser"></i> 금액 비우기</button>' +
+          '<button class="btn btn-red dm-del" data-del-date-adm="' + d.id + '"><i class="fas fa-trash-can"></i> 날짜 삭제</button>' +
+        '</div>' +
+      '</div>';
+    });
+    box.innerHTML = h;
+  }
+  (function wireDateManage() {
+    var box = document.getElementById('admin-date-list');
+    if (!box) return;
+    box.addEventListener('click', function (e) {
+      if (!isAdmin) return;
+      var clearBtn = e.target.closest('[data-clear-date]');
+      var delBtn = e.target.closest('[data-del-date-adm]');
+      if (clearBtn) {
+        var cid = clearBtn.getAttribute('data-clear-date');
+        var cd = findDate(cid);
+        if (cd && confirm('"' + fmtDateFull(cd.iso) + '" 날짜의 입력 금액을 모두 0으로 비울까요?\n※ 날짜 열은 그대로 두고 금액만 지웁니다.')) {
+          state.members.forEach(function (m) { delete state.cells[cellKey(m.id, cid)]; });
+          save(); render(); renderDateManage();
+        }
+      } else if (delBtn) {
+        var did = delBtn.getAttribute('data-del-date-adm');
+        var dd = findDate(did);
+        if (dd && confirm('"' + fmtDateFull(dd.iso) + '" 날짜 열을 완전히 삭제할까요?\n※ 해당 날짜의 모든 금액도 함께 삭제됩니다.')) {
+          state.dates = state.dates.filter(function (x) { return x.id !== did; });
+          Object.keys(state.cells).forEach(function (k) { if (k.split('|')[1] === did) delete state.cells[k]; });
+          delete state.widths['date:' + did];
+          save(); render(); renderDateManage();
+        }
+      }
+    });
+  })();
 
   // ---------- 화면 문구(라벨) 수정 ----------
   function fillLabelInputs() {
