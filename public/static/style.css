@@ -153,6 +153,8 @@ html, body {
 }
 
 /* --- Header row --- */
+/* 헤더는 세로 스크롤 시 위에 고정(top sticky)만 사용.
+   좌우 컬럼 고정(left/right sticky)은 표가 작아 빈칸을 만들어 제거함. */
 .sheet thead th {
   background: linear-gradient(180deg, #1a875191 0%, #157347 100%);
   background-color: var(--green);
@@ -164,7 +166,6 @@ html, body {
   white-space: nowrap;
   border-bottom: 2px solid var(--green-dark);
   letter-spacing: .3px;
-  position: relative;
 }
 /* 폭은 px 고정값. header/body/foot 모두 같은 값을 써야 정렬이 맞음 */
 .col-no    { width: var(--w-no);    min-width: var(--w-no); }
@@ -195,11 +196,6 @@ html, body {
   background: rgba(255,255,255,.4); border-radius: 2px;
 }
 .col-resize:hover::after { background: #fff; }
-
-/* --- Sticky left columns --- */
-.col-no, .cell-no { position: sticky; left: 0; z-index: 6; }
-.col-name, .cell-name { position: sticky; left: var(--w-no); z-index: 6; }
-.sheet thead th.col-no, .sheet thead th.col-name { z-index: 12; }
 
 .cell-no {
   background: var(--green-soft);
@@ -240,9 +236,7 @@ html, body {
 .sheet tbody tr:nth-child(even) .cell-no { background: #dcefe4; }
 .sheet tbody tr:hover td { background: #f1f8f4; }
 
-/* --- Total column (right, sticky) --- */
-.col-total, .cell-total { position: sticky; right: 0; z-index: 6; }
-.sheet thead th.col-total { z-index: 12; }
+/* --- Total column (right) --- */
 .cell-total {
   background: var(--total-bg);
   color: var(--red);
@@ -265,12 +259,12 @@ html, body {
   font-size: 13px;
 }
 .sheet tfoot td.foot-label {
-  left: 0; z-index: 11; text-align: left;
+  z-index: 11; text-align: left;
   white-space: nowrap;
 }
 .sheet tfoot td.foot-label i { margin-right: 5px; }
 .sheet tfoot td.foot-grand {
-  right: 0; z-index: 13;
+  z-index: 13;
   background: var(--green-dark); color: #fff; font-size: 15px;
   border-left: 2px solid var(--gold);
 }
