@@ -4,6 +4,7 @@
 
   var STORE_KEY = 'golf-penalty-sheet-v3';
   var DEFAULT_ROWS = 8;
+  var DEFAULT_DATE_COUNT = 3;   // 앱 기본 날짜 개수(3개). 많아지면 접기로 처리.
   var ADMIN_ID = 'admin';
   var ADMIN_PW = 'admin1234';
 
@@ -29,7 +30,7 @@
         var d = JSON.parse(raw);
         return {
           members: (d.members && d.members.length) ? d.members : makeDefaultMembers(),
-          dates: (d.dates && d.dates.length) ? d.dates : [makeDate(todayIso())],
+          dates: (d.dates && d.dates.length) ? d.dates : makeDefaultDates(),
           cells: d.cells || {},
           manager: d.manager || { name: '', phone: '' },
           widths: d.widths || {},
@@ -40,7 +41,7 @@
     } catch (e) {}
     return {
       members: makeDefaultMembers(),
-      dates: [makeDate(todayIso())],  // 골프 친 날짜 기본 1개
+      dates: makeDefaultDates(),  // 골프 친 날짜 기본 3개(많아지면 접기)
       cells: {}, manager: { name: '', phone: '' }, widths: {}, labels: mergeLabels(null)
     };
   }
@@ -73,6 +74,18 @@
     return arr;
   }
   function makeDate(iso) { return { id: uid(), iso: iso }; }
+  // 기본 날짜 3개(오늘 기준 최근 3일)를 만든다. 앱을 처음 열거나 완전 초기화했을 때 사용.
+  function makeDefaultDates() {
+    var arr = [];
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    for (var i = DEFAULT_DATE_COUNT - 1; i >= 0; i--) {
+      var d = new Date();
+      d.setDate(d.getDate() - i);
+      var iso = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+      arr.push(makeDate(iso));
+    }
+    return arr;
+  }
   function saveLocal() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
   // save(): 로컬에 즉시 저장 + 서버(R2)에 디바운스 저장하여 모든 기기가 공유하게 함.
   function save() { saveLocal(); scheduleServerSave(); }
@@ -683,7 +696,7 @@
     if (!isAdmin) { alert('초기화는 관리자만 할 수 있습니다.'); return; }
     if (confirm('정산표(회원/날짜/금액)를 완전히 초기화할까요?\n※ 관리자 자료실 이미지는 유지됩니다.')) {
       state.members = makeDefaultMembers();
-      state.dates = [makeDate(todayIso())];
+      state.dates = makeDefaultDates();
       state.cells = {}; state.manager = { name: '', phone: '' }; state.widths = {};
       state.labels = defaultLabels();
       mgrName.value = ''; mgrPhone.value = '';
@@ -1057,7 +1070,7 @@
         if (!d || !d.members) throw new Error('형식오류');
         state = {
           members: d.members || makeDefaultMembers(),
-          dates: (d.dates && d.dates.length) ? d.dates : [makeDate(todayIso())],
+          dates: (d.dates && d.dates.length) ? d.dates : makeDefaultDates(),
           cells: d.cells || {}, manager: d.manager || { name: '', phone: '' },
           widths: d.widths || {}, labels: mergeLabels(d.labels)
           // 자료실 이미지는 서버(R2)에 있으므로 복원 대상이 아님
