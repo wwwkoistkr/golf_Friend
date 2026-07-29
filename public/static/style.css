@@ -492,14 +492,15 @@ html, body {
   .manager-bar input { min-width: 90px; flex: 1; }
   .table-wrap { max-height: calc(100vh - 160px); }
   .sheet { font-size: 13px; }
-  /* 모바일: px 고정폭을 조금 줄여 화면에 더 많이 보이도록 */
+  /* 모바일: px 고정폭을 줄여 이름+번호+날짜(잃은돈)+합계가 함께 보이도록 */
   :root {
-    --w-no: 42px;
-    --w-name: 104px;
-    --w-phone: 80px;
-    --w-date: 80px;
-    --w-total: 92px;
+    --w-no: 34px;
+    --w-name: 80px;
+    --w-phone: 60px;
+    --w-date: 74px;
+    --w-total: 74px;
   }
+  .date-head .date-lost { font-size: 9px; padding: 1px 5px; }
   .cell-name input, .cell-phone input, .cell-money input { padding: 9px 4px; font-size: 13px; }
   .admin-cards { grid-template-columns: 1fr; }
   .asset-list { grid-template-columns: repeat(auto-fill, minmax(46%, 1fr)); }
