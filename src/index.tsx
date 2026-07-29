@@ -145,13 +145,6 @@ app.get('/', (c) => {
     </div>
   </header>
 
-  <div class="manager-bar">
-    <span class="mgr-label"><i class="fas fa-user-tie"></i> 담당자</span>
-    <input id="manager-name" type="text" placeholder="이름" />
-    <input id="manager-phone" type="tel" placeholder="양지번호" inputmode="tel" />
-    <span class="mgr-hint">칸 경계선을 드래그하면 너비를 조절할 수 있어요 · 자동 저장됨</span>
-  </div>
-
   <main class="app-main" id="view-sheet">
     <div id="mode-banner" class="mode-banner mode-user">
       <i class="fas fa-pen"></i> 일반 사용자 모드 · 모든 칸을 <b>자유롭게 입력·수정</b>할 수 있습니다 (회원·날짜 삭제, 자료실은 관리자)

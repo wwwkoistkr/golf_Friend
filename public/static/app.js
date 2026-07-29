@@ -150,33 +150,12 @@
 
     var MAX_VISIBLE = 3; // 화면에 보이는 날짜는 최대 약 3일 + 합계
 
-    // 표(table-wrap)는 이제 내용만큼만 좁아지므로 그 폭을 기준으로 쓰면
-    // 접힘 계산이 좁게 갇힌다. 부모(.app-main) 또는 화면 폭을 기준으로 계산.
-    var main = document.getElementById('view-sheet');
-    var mainW = main ? main.clientWidth : 0;
-    // 좁은 화면에서는 여백을 적게 잡아 날짜가 한 개라도 더 들어가도록 함
-    var pad = (window.innerWidth <= 480) ? 10 : 24;
-    var avail = (mainW || window.innerWidth) - pad; // 여유
-    // 고정 열(No/이름/양지번호/합계) 폭을 뺀 나머지에 날짜를 채움
-    var noW = cssPx('--w-no', 54), nameW = colW('name', '--w-name', 132),
-        phoneW = colW('phone', '--w-phone', 96), totalW = cssPx('--w-total', 110);
-    var fixed = noW + nameW + phoneW + totalW;
-    var foldW = (window.innerWidth <= 480) ? 28 : 34; // '···' 접힘 표시 열 폭
-    var room = avail - fixed;
-
-    // 뒤(최근)에서부터 들어갈 수 있는 만큼만 채움 (단, 최대 3일까지만)
+    // 접기 기능이 켜져 있을 때는 화면 폭(모바일/PC)에 관계없이 항상 최근 3일을 고정으로
+    // 보여준다. (모바일에서도 PC와 동일하게 3일이 나오도록) 480px 이하 좁은 폰에서는
+    // CSS가 컬럼 폭을 충분히 좁혀두었으므로 3일이 화면 안에 들어간다.
     var visible = [];
-    var used = 0;
-    for (var i = dates.length - 1; i >= 0; i--) {
-      if (visible.length >= MAX_VISIBLE) break; // 최대 3일 제한
-      var dw = colW('date:' + dates[i].id, '--w-date', 92);
-      var reserve = (i > 0) ? foldW : 0; // 앞에 더 있으면 접힘열 자리 확보
-      if (used + dw + reserve <= room || visible.length === 0) {
-        visible.unshift(dates[i]);
-        used += dw;
-      } else {
-        break;
-      }
+    for (var i = dates.length - 1; i >= 0 && visible.length < MAX_VISIBLE; i--) {
+      visible.unshift(dates[i]);
     }
     var visibleIds = {};
     visible.forEach(function (d) { visibleIds[d.id] = true; });
@@ -540,22 +519,6 @@
     var iso = datePicker.value; // 이미 YYYY-MM-DD 형식
     datePicker.value = '';
     addDateColumn(iso);
-  });
-
-  // ---------- 담당자 ----------
-  var mgrName = document.getElementById('manager-name');
-  var mgrPhone = document.getElementById('manager-phone');
-  mgrName.value = state.manager.name || ''; mgrPhone.value = state.manager.phone || '';
-  mgrName.addEventListener('input', function () { state.manager.name = mgrName.value; save(); });
-  mgrPhone.addEventListener('input', function () { state.manager.phone = mgrPhone.value; save(); });
-  // 담당자 이름 입력 후 Enter → 양지번호로, 양지번호에서 Enter → 표 첫 이름칸으로
-  mgrName.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); mgrPhone.focus(); mgrPhone.select && mgrPhone.select(); } });
-  mgrPhone.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      var first = body.querySelector('.name-input');
-      if (first) { first.focus(); try { first.select(); } catch (x) {} }
-    }
   });
 
   // ---------- 초기화(=전체 펼쳐보기) ----------
@@ -986,7 +949,7 @@
           widths: d.widths || {}, labels: mergeLabels(d.labels)
           // 자료실 이미지는 서버(R2)에 있으므로 복원 대상이 아님
         };
-        save(); mgrName.value = state.manager.name || ''; mgrPhone.value = state.manager.phone || '';
+        save();
         render(); renderAdmin();
         alert('정산 데이터를 복원했습니다. (자료실 이미지는 서버에 그대로 유지됩니다)');
       } catch (x) { alert('올바른 백업 파일이 아닙니다.'); }
