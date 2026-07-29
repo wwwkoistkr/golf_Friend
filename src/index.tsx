@@ -118,6 +118,62 @@ app.delete('/api/assets/:id', async (c) => {
   }
 });
 
+// ---------- 정산표 데이터 공유 API (Cloudflare R2에 JSON 저장) ----------
+// 모든 기기(모바일/PC)가 같은 정산표 데이터를 실시간 공유하도록 서버에 저장한다.
+// localStorage는 기기별로 분리돼 있어 연동이 안 되므로, 여기 서버 저장본을 "정본"으로 쓴다.
+const SHEET_KEY = 'sheet/data.json';
+
+// 서버에 저장된 정산표 데이터 조회. 없으면 rev=0 + null 데이터 반환.
+app.get('/api/sheet', async (c) => {
+  try {
+    const obj = await c.env.ASSETS_BUCKET.get(SHEET_KEY);
+    if (!obj) return c.json({ ok: true, rev: 0, data: null });
+    const text = await (obj as any).text ? await (obj as any).text() : null;
+    let parsed: any = null;
+    if (text) { try { parsed = JSON.parse(text); } catch (e) { parsed = null; } }
+    const meta = (obj.customMetadata || {}) as Record<string, string>;
+    const rev = meta.rev ? Number(meta.rev) : 0;
+    return c.json({ ok: true, rev, data: parsed });
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e && e.message || e) }, 500);
+  }
+});
+
+// 정산표 데이터 저장. 일반 사용자도 입력·수정하므로 인증 없이 허용한다.
+// body: { data: {...}, baseRev: number }  → 저장 성공 시 새 rev 반환.
+// baseRev 가 서버 현재 rev 와 다르면 409(충돌) 반환 → 클라이언트가 먼저 최신을 받아 병합.
+app.put('/api/sheet', async (c) => {
+  try {
+    const body = await c.req.json().catch(() => null) as any;
+    if (!body || typeof body !== 'object' || !body.data) {
+      return c.json({ ok: false, error: 'bad request' }, 400);
+    }
+    // 현재 서버 rev 확인
+    let curRev = 0;
+    const cur = await c.env.ASSETS_BUCKET.get(SHEET_KEY);
+    if (cur) {
+      const m = (cur.customMetadata || {}) as Record<string, string>;
+      curRev = m.rev ? Number(m.rev) : 0;
+    }
+    // 낙관적 동시성: baseRev 가 제시됐고 서버 rev 와 다르면 충돌
+    if (typeof body.baseRev === 'number' && body.baseRev !== curRev) {
+      // 최신 서버 데이터를 함께 돌려줘서 클라이언트가 병합하게 함
+      let latest: any = null;
+      if (cur) { const t = await (cur as any).text ? await (cur as any).text() : null; if (t) { try { latest = JSON.parse(t); } catch (e) {} } }
+      return c.json({ ok: false, conflict: true, rev: curRev, data: latest }, 409);
+    }
+    const newRev = curRev + 1;
+    const payload = JSON.stringify(body.data);
+    await c.env.ASSETS_BUCKET.put(SHEET_KEY, payload, {
+      httpMetadata: { contentType: 'application/json' },
+      customMetadata: { rev: String(newRev), ts: String(Date.now()) }
+    });
+    return c.json({ ok: true, rev: newRev });
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e && e.message || e) }, 500);
+  }
+});
+
 app.get('/', (c) => {
   return c.html(`<!DOCTYPE html>
 <html lang="ko">

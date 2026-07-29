@@ -73,8 +73,115 @@
     return arr;
   }
   function makeDate(iso) { return { id: uid(), iso: iso }; }
-  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
+  function saveLocal() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
+  // save(): 로컬에 즉시 저장 + 서버(R2)에 디바운스 저장하여 모든 기기가 공유하게 함.
+  function save() { saveLocal(); scheduleServerSave(); }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  // ============================================================
+  //  서버 동기화 (모바일 ↔ PC 실시간 연동)
+  //  - 정산표 데이터를 서버(R2 sheet/data.json)에 저장/불러오기.
+  //  - localStorage 는 기기별로 분리돼 연동이 안 되므로 서버 저장본을 "정본"으로 사용.
+  // ============================================================
+  var serverRev = 0;            // 마지막으로 확인/저장한 서버 버전
+  var serverSaveTimer = null;   // 디바운스 타이머
+  var isSavingToServer = false; // 저장 중 중복 방지
+  var pendingServerSave = false;// 저장 중에 또 변경되면 다시 저장
+  var lastAppliedJson = '';     // 폴링 시 동일 데이터면 무시하기 위한 캐시
+
+  function serializeState() {
+    return {
+      members: state.members, dates: state.dates, cells: state.cells,
+      manager: state.manager, widths: state.widths, labels: state.labels
+    };
+  }
+
+  function scheduleServerSave() {
+    if (serverSaveTimer) clearTimeout(serverSaveTimer);
+    serverSaveTimer = setTimeout(function () {
+      serverSaveTimer = null;   // ★타이머 소진 후 반드시 null 로 리셋(폴링이 막히지 않도록)
+      saveToServer();
+    }, 600); // 입력 후 0.6초 뒤 서버 저장
+  }
+
+  function saveToServer() {
+    if (isSavingToServer) { pendingServerSave = true; return; }
+    isSavingToServer = true;
+    var payload = serializeState();
+    lastAppliedJson = JSON.stringify(payload);
+    fetch('/api/sheet', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: payload, baseRev: serverRev })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { status: r.status, body: j }; });
+    }).then(function (res) {
+      if (res.status === 409 && res.body && res.body.conflict) {
+        // 다른 기기가 먼저 저장함 → 서버 최신을 받아 병합 후 다시 저장
+        serverRev = res.body.rev || serverRev;
+        if (res.body.data) { applyServerData(res.body.data); }
+        isSavingToServer = false;
+        // 병합된 내 변경을 다시 저장(최신 rev 기준)
+        scheduleServerSave();
+        return;
+      }
+      if (res.body && res.body.ok) { serverRev = res.body.rev || serverRev; }
+      isSavingToServer = false;
+      if (pendingServerSave) { pendingServerSave = false; scheduleServerSave(); }
+    }).catch(function () {
+      isSavingToServer = false; // 오프라인 등 실패 시 로컬 저장만 유지
+    });
+  }
+
+  // 서버에서 받은 데이터를 현재 state 에 적용(입력 포커스 중이면 건드리지 않음)
+  function applyServerData(d) {
+    if (!d || !d.members) return;
+    state.members = d.members;
+    state.dates = (d.dates && d.dates.length) ? d.dates : state.dates;
+    state.cells = d.cells || {};
+    state.manager = d.manager || state.manager || { name: '', phone: '' };
+    state.widths = d.widths || {};
+    state.labels = mergeLabels(d.labels);
+    saveLocal();
+    render();
+    renderAdmin && renderAdmin();
+  }
+
+  // 시작 시 서버 데이터 로드. 서버에 데이터가 있으면 그걸로 화면을 채운다.
+  function loadFromServer() {
+    return fetch('/api/sheet').then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.ok) {
+        serverRev = j.rev || 0;
+        if (j.data && j.data.members) {
+          lastAppliedJson = JSON.stringify(j.data);
+          applyServerData(j.data);
+        } else {
+          // 서버가 비어있으면(최초) 현재 로컬 데이터를 서버에 올려 정본으로 만든다.
+          if (state.members && state.members.length) { scheduleServerSave(); }
+        }
+      }
+    }).catch(function () {}); // 실패해도 로컬 데이터로 계속 동작
+  }
+
+  // 주기적 폴링: 다른 기기(모바일/PC)에서 바뀐 내용을 가져와 반영.
+  function startPolling() {
+    setInterval(function () {
+      // 사용자가 입력칸에 타이핑 중이면(포커스) 화면을 갈아치우지 않음
+      var ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') && ae.closest && ae.closest('#view-sheet')) return;
+      if (isSavingToServer || serverSaveTimer) return; // 내가 저장 중이면 건너뜀
+      fetch('/api/sheet').then(function (r) { return r.json(); }).then(function (j) {
+        if (j && j.ok && j.rev > serverRev && j.data && j.data.members) {
+          serverRev = j.rev;
+          var incoming = JSON.stringify(j.data);
+          if (incoming !== lastAppliedJson) {
+            lastAppliedJson = incoming;
+            applyServerData(j.data);
+          }
+        }
+      }).catch(function () {});
+    }, 4000); // 4초마다 확인
+  }
 
   // ---------- 숫자/날짜 ----------
   function fmt(n) { n = Number(n) || 0; return n.toLocaleString('ko-KR'); }
@@ -969,4 +1076,8 @@
   render();
   window.addEventListener('load', syncHeaderWidth);
   if (document.fonts && document.fonts.ready) { document.fonts.ready.then(syncHeaderWidth); }
+
+  // 서버(R2)에서 공유 데이터 로드 → 화면 반영 → 이후 4초마다 폴링하여 다른 기기 변경 동기화.
+  // 이렇게 하면 모바일에서 추가한 날짜가 PC에도, PC에서 추가한 날짜가 모바일에도 실시간 반영됨.
+  loadFromServer().then(function () { startPolling(); });
 })();
