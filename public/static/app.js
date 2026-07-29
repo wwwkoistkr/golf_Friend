@@ -9,6 +9,9 @@
 
   var isAdmin = false; // 관리자 로그인 여부 (수정/삭제 권한)
   var MAX_MONEY = 100000; // 금액 입력 상한: 십만원
+  var adminKey = '';       // 서버 자료실 쓰기용 관리자 키 (로그인 시 저장)
+  var assetsCache = [];    // 서버(R2)에서 받아온 자료실 목록
+  var assetsLoaded = false;
 
   var state = load();
 
@@ -23,15 +26,15 @@
           dates: (d.dates && d.dates.length) ? d.dates : [makeDate(todayIso())],
           cells: d.cells || {},
           manager: d.manager || { name: '', phone: '' },
-          widths: d.widths || {},
-          assets: d.assets || []
+          widths: d.widths || {}
+          // assets(자료실 이미지)는 이제 서버(R2)에 저장 → localStorage에 두지 않음
         };
       }
     } catch (e) {}
     return {
       members: makeDefaultMembers(),
       dates: [makeDate(todayIso())],  // 골프 친 날짜 기본 1개
-      cells: {}, manager: { name: '', phone: '' }, widths: {}, assets: []
+      cells: {}, manager: { name: '', phone: '' }, widths: {}
     };
   }
   function makeDefaultMembers() {
@@ -428,7 +431,9 @@
   loginModal.addEventListener('click', function (e) { if (e.target === loginModal) loginModal.classList.add('hidden'); });
   function tryLogin() {
     if (loginId.value.trim() === ADMIN_ID && loginPw.value === ADMIN_PW) {
-      isAdmin = true; loginModal.classList.add('hidden');
+      isAdmin = true;
+      adminKey = loginPw.value; // 서버 자료실 API 쓰기 인증에 사용(x-admin-key)
+      loginModal.classList.add('hidden');
       updateAdminBtn(); render(); openAdmin();
     } else { loginError.classList.remove('hidden'); }
   }
@@ -442,9 +447,14 @@
 
   // 관리자 로그아웃
   document.getElementById('btn-logout').addEventListener('click', function () {
-    isAdmin = false; updateAdminBtn(); closeAdmin();
+    isAdmin = false; adminKey = ''; updateAdminBtn(); closeAdmin();
     alert('관리자 모드를 종료했습니다. 이제 일반 사용자(입력만 가능) 상태입니다.');
   });
+
+  function updateAssetCount() {
+    var el = document.getElementById('asset-count-num');
+    if (el) el.textContent = assetsCache.length;
+  }
 
   function renderAdmin() {
     // 요약
@@ -454,58 +464,96 @@
       '<div class="summary-item"><div class="num">' + namedMembers + '</div><div class="lbl">등록 회원</div></div>' +
       '<div class="summary-item"><div class="num">' + state.dates.length + '</div><div class="lbl">골프 날짜</div></div>' +
       '<div class="summary-item"><div class="num">' + fmt(totalPenalty) + '</div><div class="lbl">누적 페널티(원)</div></div>' +
-      '<div class="summary-item"><div class="num">' + state.assets.length + '</div><div class="lbl">자료 개수</div></div>';
-    renderAssets();
+      '<div class="summary-item"><div class="num" id="asset-count-num">' + assetsCache.length + '</div><div class="lbl">자료 개수</div></div>';
+    // 서버(R2)에서 자료실 목록을 불러와 렌더
+    loadAssetsFromServer();
+  }
+
+  // 서버에서 자료실 목록 로드
+  function loadAssetsFromServer() {
+    var list = document.getElementById('asset-list');
+    list.innerHTML = '<div class="asset-empty"><i class="fas fa-spinner fa-spin"></i> 자료를 불러오는 중…</div>';
+    fetch('/api/assets')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        assetsCache = (d && d.ok && d.assets) ? d.assets : [];
+        assetsLoaded = true;
+        updateAssetCount();
+        renderAssets();
+      })
+      .catch(function () {
+        list.innerHTML = '<div class="asset-empty"><i class="fas fa-triangle-exclamation"></i> 자료실을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>';
+      });
   }
 
   function renderAssets() {
     var list = document.getElementById('asset-list');
-    if (!state.assets.length) { list.innerHTML = '<div class="asset-empty"><i class="fas fa-folder-open"></i> 등록된 자료가 없습니다. 이미지를 추가해 보세요.</div>'; return; }
+    if (!assetsCache.length) { list.innerHTML = '<div class="asset-empty"><i class="fas fa-folder-open"></i> 등록된 자료가 없습니다. 이미지를 추가해 보세요.</div>'; return; }
     var h = '';
-    state.assets.forEach(function (a) {
+    assetsCache.forEach(function (a) {
       h += '<div class="asset-item">' +
-        '<button class="asset-del" data-del-asset="' + a.id + '" title="삭제"><i class="fas fa-trash"></i></button>' +
-        '<img src="' + a.data + '" alt="' + escapeHtml(a.name) + '" data-view="' + a.id + '" />' +
+        (isAdmin ? '<button class="asset-del" data-del-asset="' + a.id + '" title="삭제"><i class="fas fa-trash"></i></button>' : '') +
+        '<img src="' + a.url + '" alt="' + escapeHtml(a.name) + '" data-view="' + a.id + '" loading="lazy" />' +
         '<div class="asset-cap">' + escapeHtml(a.name) + '</div>' +
         '</div>';
     });
     list.innerHTML = h;
   }
 
-  // 자료 추가
+  // 자료 추가 (서버 R2 업로드)
   var assetName = document.getElementById('asset-name');
   var assetFile = document.getElementById('asset-file');
-  var pendingImage = null;
+  var pendingFile = null;
   assetFile.addEventListener('change', function () {
-    var f = assetFile.files[0]; if (!f) { pendingImage = null; return; }
-    if (f.size > 3 * 1024 * 1024) { alert('이미지 용량이 큽니다(최대 약 3MB 권장). 더 작은 이미지를 사용해 주세요.'); assetFile.value = ''; return; }
-    var reader = new FileReader();
-    reader.onload = function () { pendingImage = { data: reader.result, filename: f.name }; };
-    reader.readAsDataURL(f);
+    var f = assetFile.files[0]; if (!f) { pendingFile = null; return; }
+    if (f.size > 8 * 1024 * 1024) { alert('이미지 용량이 큽니다(최대 8MB). 더 작은 이미지를 사용해 주세요.'); assetFile.value = ''; return; }
+    pendingFile = f;
   });
   document.getElementById('asset-save').addEventListener('click', function () {
-    var name = assetName.value.trim();
-    if (!pendingImage) { alert('이미지를 먼저 선택해 주세요.'); return; }
-    if (!name) { name = pendingImage.filename || '자료'; }
-    state.assets.unshift({ id: uid(), name: name, data: pendingImage.data, ts: Date.now() });
-    save();
-    assetName.value = ''; assetFile.value = ''; pendingImage = null;
-    renderAdmin();
+    if (!isAdmin) { alert('자료 등록은 관리자만 할 수 있습니다.'); return; }
+    if (!pendingFile) { alert('이미지를 먼저 선택해 주세요.'); return; }
+    var name = assetName.value.trim() || pendingFile.name || '자료';
+    var saveBtn = document.getElementById('asset-save');
+    var origHtml = saveBtn.innerHTML;
+    saveBtn.disabled = true; saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 업로드 중…';
+
+    var fd = new FormData();
+    fd.append('file', pendingFile);
+    fd.append('name', name);
+    fetch('/api/assets', { method: 'POST', headers: { 'x-admin-key': adminKey }, body: fd })
+      .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
+      .then(function (res) {
+        if (res.status === 401) { alert('관리자 인증에 실패했습니다. 다시 로그인해 주세요.'); return; }
+        if (!res.d || !res.d.ok) { alert('업로드 실패: ' + ((res.d && res.d.error) || '알 수 없는 오류')); return; }
+        assetName.value = ''; assetFile.value = ''; pendingFile = null;
+        loadAssetsFromServer();
+      })
+      .catch(function () { alert('네트워크 오류로 업로드에 실패했습니다.'); })
+      .then(function () { saveBtn.disabled = false; saveBtn.innerHTML = origHtml; });
   });
 
   // 자료 삭제 / 크게보기
   document.getElementById('asset-list').addEventListener('click', function (e) {
     var del = e.target.closest('[data-del-asset]');
     if (del) {
+      if (!isAdmin) return;
       var id = del.getAttribute('data-del-asset');
-      if (confirm('이 자료를 삭제할까요?')) { state.assets = state.assets.filter(function (a) { return a.id !== id; }); save(); renderAdmin(); }
+      if (!confirm('이 자료를 삭제할까요? (서버에서 영구 삭제됩니다)')) return;
+      fetch('/api/assets/' + encodeURIComponent(id), { method: 'DELETE', headers: { 'x-admin-key': adminKey } })
+        .then(function (r) { return r.json().then(function (d) { return { status: r.status, d: d }; }); })
+        .then(function (res) {
+          if (res.status === 401) { alert('관리자 인증에 실패했습니다. 다시 로그인해 주세요.'); return; }
+          if (!res.d || !res.d.ok) { alert('삭제 실패: ' + ((res.d && res.d.error) || '오류')); return; }
+          loadAssetsFromServer();
+        })
+        .catch(function () { alert('네트워크 오류로 삭제에 실패했습니다.'); });
       return;
     }
     var view = e.target.closest('[data-view]');
     if (view) {
       var vid = view.getAttribute('data-view');
-      var a = null; for (var i = 0; i < state.assets.length; i++) if (state.assets[i].id === vid) a = state.assets[i];
-      if (a) { document.getElementById('img-big').src = a.data; document.getElementById('img-caption').textContent = a.name; document.getElementById('img-modal').classList.remove('hidden'); }
+      var a = null; for (var i = 0; i < assetsCache.length; i++) if (assetsCache[i].id === vid) a = assetsCache[i];
+      if (a) { document.getElementById('img-big').src = a.url; document.getElementById('img-caption').textContent = a.name; document.getElementById('img-modal').classList.remove('hidden'); }
     }
   });
   document.getElementById('img-close').addEventListener('click', function () { document.getElementById('img-modal').classList.add('hidden'); });
@@ -514,6 +562,7 @@
   // 관리자: CSV / 백업 / 복원
   document.getElementById('admin-export').addEventListener('click', exportCsv);
   document.getElementById('admin-backup').addEventListener('click', function () {
+    // 정산 데이터(회원/날짜/금액)만 백업. 자료실 이미지는 서버(R2)에 자동 보관됨.
     var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
     downloadBlob(blob, '골프정산_백업_' + todayIso() + '.json');
   });
@@ -528,11 +577,12 @@
           members: d.members || makeDefaultMembers(),
           dates: (d.dates && d.dates.length) ? d.dates : [makeDate(todayIso())],
           cells: d.cells || {}, manager: d.manager || { name: '', phone: '' },
-          widths: d.widths || {}, assets: d.assets || []
+          widths: d.widths || {}
+          // 자료실 이미지는 서버(R2)에 있으므로 복원 대상이 아님
         };
         save(); mgrName.value = state.manager.name || ''; mgrPhone.value = state.manager.phone || '';
         render(); renderAdmin();
-        alert('백업을 복원했습니다.');
+        alert('정산 데이터를 복원했습니다. (자료실 이미지는 서버에 그대로 유지됩니다)');
       } catch (x) { alert('올바른 백업 파일이 아닙니다.'); }
       e.target.value = '';
     };

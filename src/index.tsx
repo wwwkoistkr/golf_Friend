@@ -1,6 +1,99 @@
 import { Hono } from 'hono'
 
-const app = new Hono()
+// R2 최소 타입 선언 (@cloudflare/workers-types 미설치 환경 대비)
+interface R2Object { key: string; uploaded?: any; customMetadata?: Record<string, string>; httpMetadata?: { contentType?: string }; body: any }
+interface R2Bucket {
+  list(opts?: any): Promise<{ objects: R2Object[] }>;
+  get(key: string): Promise<R2Object | null>;
+  put(key: string, value: any, opts?: any): Promise<any>;
+  delete(key: string): Promise<void>;
+}
+
+type Bindings = {
+  ASSETS_BUCKET: R2Bucket;
+  ADMIN_KEY?: string;  // 관리자 쓰기 보호 키 (secret). 미설정 시 기본값 사용
+}
+
+const app = new Hono<{ Bindings: Bindings }>()
+
+// 관리자 쓰기 키 검증. secret ADMIN_KEY 가 설정돼 있으면 그 값과,
+// 없으면 기본값 'admin1234' 와 비교(로컬/초기용).
+function checkAdmin(c: any): boolean {
+  const expected = (c.env && c.env.ADMIN_KEY) ? c.env.ADMIN_KEY : 'admin1234';
+  const got = c.req.header('x-admin-key') || '';
+  return got === expected;
+}
+
+// ---------- 자료실 API (Cloudflare R2) ----------
+
+// 목록: R2에 저장된 이미지들의 메타데이터(id, name, ts) 반환
+app.get('/api/assets', async (c) => {
+  try {
+    const list = await c.env.ASSETS_BUCKET.list({ prefix: 'assets/', include: ['customMetadata'] });
+    const items = list.objects.map((o) => {
+      const meta = (o.customMetadata || {}) as Record<string, string>;
+      const id = o.key.replace(/^assets\//, '');
+      return {
+        id,
+        name: meta.name || id,
+        ts: meta.ts ? Number(meta.ts) : (o.uploaded ? new Date(o.uploaded).getTime() : 0),
+        url: '/api/assets/' + encodeURIComponent(id)
+      };
+    });
+    // 최신 업로드가 위로
+    items.sort((a, b) => b.ts - a.ts);
+    return c.json({ ok: true, assets: items });
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e && e.message || e) }, 500);
+  }
+});
+
+// 이미지 원본 조회 (누구나 볼 수 있음 = 공유)
+app.get('/api/assets/:id', async (c) => {
+  const id = c.req.param('id');
+  const obj = await c.env.ASSETS_BUCKET.get('assets/' + id);
+  if (!obj) return c.notFound();
+  const headers = new Headers();
+  const ct = (obj.httpMetadata && obj.httpMetadata.contentType) || 'application/octet-stream';
+  headers.set('Content-Type', ct);
+  headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+  return new Response(obj.body, { headers });
+});
+
+// 업로드 (관리자만): multipart/form-data { file, name }
+app.post('/api/assets', async (c) => {
+  if (!checkAdmin(c)) return c.json({ ok: false, error: 'unauthorized' }, 401);
+  try {
+    const form = await c.req.formData();
+    const file = form.get('file');
+    const name = (form.get('name') as string) || '';
+    if (!file || typeof file === 'string') return c.json({ ok: false, error: 'no file' }, 400);
+    const f = file as unknown as File;
+    if (f.size > 8 * 1024 * 1024) return c.json({ ok: false, error: 'too large (max 8MB)' }, 400);
+
+    const ext = (f.name && f.name.indexOf('.') >= 0) ? f.name.slice(f.name.lastIndexOf('.')) : '';
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8) + ext;
+    const buf = await f.arrayBuffer();
+    await c.env.ASSETS_BUCKET.put('assets/' + id, buf, {
+      httpMetadata: { contentType: f.type || 'application/octet-stream' },
+      customMetadata: { name: (name || f.name || '자료'), ts: String(Date.now()) }
+    });
+    return c.json({ ok: true, asset: { id, name: (name || f.name || '자료'), ts: Date.now(), url: '/api/assets/' + encodeURIComponent(id) } });
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e && e.message || e) }, 500);
+  }
+});
+
+// 삭제 (관리자만)
+app.delete('/api/assets/:id', async (c) => {
+  if (!checkAdmin(c)) return c.json({ ok: false, error: 'unauthorized' }, 401);
+  try {
+    await c.env.ASSETS_BUCKET.delete('assets/' + c.req.param('id'));
+    return c.json({ ok: true });
+  } catch (e: any) {
+    return c.json({ ok: false, error: String(e && e.message || e) }, 500);
+  }
+});
 
 app.get('/', (c) => {
   return c.html(`<!DOCTYPE html>
@@ -73,7 +166,7 @@ app.get('/', (c) => {
 
         <div class="admin-card">
           <h3><i class="fas fa-images"></i> 자료실 (이미지 · 이름)</h3>
-          <p class="admin-desc">회원 사진, 영수증, 모임 사진 등 자료를 이름과 함께 등록·관리합니다.</p>
+          <p class="admin-desc"><i class="fas fa-cloud"></i> 이미지는 <b>서버(Cloudflare R2)</b>에 저장되어 <b>모든 사람이 함께 보고</b>, 자동으로 <b>영구 보관·백업</b>됩니다. 브라우저를 지워도 사라지지 않습니다. (이미지당 최대 8MB)</p>
           <div class="asset-add">
             <input id="asset-name" type="text" placeholder="자료 이름 (예: 김회원 사진)" />
             <label class="btn btn-green file-btn"><i class="fas fa-image"></i> 이미지 선택
