@@ -102,6 +102,8 @@
     // 접기 꺼짐 or 날짜가 적으면 전부 표시
     if (!collapseEnabled) return { visible: dates.slice(), hiddenCount: 0, hiddenIds: [] };
 
+    var MAX_VISIBLE = 3; // 화면에 보이는 날짜는 최대 약 3일 + 합계
+
     var wrap = document.getElementById('table-wrap');
     var avail = (wrap ? wrap.clientWidth : window.innerWidth) - 24; // 여유
     // 고정 열(No/이름/양지번호/합계) 폭을 뺀 나머지에 날짜를 채움
@@ -111,10 +113,11 @@
     var foldW = 34; // '···' 접힘 표시 열 폭
     var room = avail - fixed;
 
-    // 뒤(최근)에서부터 들어갈 수 있는 만큼만 채움
+    // 뒤(최근)에서부터 들어갈 수 있는 만큼만 채움 (단, 최대 3일까지만)
     var visible = [];
     var used = 0;
     for (var i = dates.length - 1; i >= 0; i--) {
+      if (visible.length >= MAX_VISIBLE) break; // 최대 3일 제한
       var dw = colW('date:' + dates[i].id, '--w-date', 92);
       var reserve = (i > 0) ? foldW : 0; // 앞에 더 있으면 접힘열 자리 확보
       if (used + dw + reserve <= room || visible.length === 0) {
