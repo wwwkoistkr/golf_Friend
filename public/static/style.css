@@ -60,8 +60,9 @@ html, body {
   background: linear-gradient(135deg, #157347 0%, #0f5132 100%);
   color: #fff;
   padding: 11px 14px;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 8px; flex-wrap: wrap;
+  /* 제목 바로 옆에 버튼을 붙임(space-between 제거) */
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 16px; flex-wrap: wrap;
   box-shadow: 0 3px 12px rgba(15,81,50,.28);
 }
 .app-header h1 {
