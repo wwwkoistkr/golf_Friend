@@ -129,15 +129,16 @@
   }
 
   // 좁은 화면(모바일/태블릿/가로화면 등 900px 이하)인지 판단.
-  // 이 폭에서는 사용자가 예전에 드래그로 넓혀 저장한 이름·양지번호 폭을
-  // 무시하고, CSS의 좁은 고정폭을 강제한다(넓은 양지번호가 다른 컬럼을 밀어내는 문제 방지).
+  // ★모바일에서는 사용자가 예전에 드래그로 넓혀 저장한 "모든" 컬럼 폭(이름·양지번호·
+  //  날짜·합계 전부)을 무시하고 CSS의 좁은 고정폭을 강제한다. 이렇게 해야 예전에 크게
+  //  늘려둔 폭이 남아 표가 화면을 넘치고(가로 스크롤) 컬럼이 잘리는 문제가 사라진다.
   function isNarrow() { return window.innerWidth <= 900; }
-  // 좁은 화면에서 CSS 고정폭을 강제할 컬럼(저장된 드래그 폭 무시 대상)
-  var NARROW_FORCE = { name: true, phone: true };
+  // 좁은 화면에서 저장 드래그 폭을 무시할지 여부 — 이제 모든 컬럼에 적용한다.
+  function forceCss(key) { return isNarrow(); }
 
   function wStyle(key) {
-    // 좁은 화면에서 이름·양지번호는 저장폭을 쓰지 않고 CSS(:root/미디어쿼리)에 맡긴다.
-    if (isNarrow() && NARROW_FORCE[key]) return '';
+    // 좁은 화면에서는 저장폭을 전혀 쓰지 않고 CSS(:root/미디어쿼리)에 맡긴다.
+    if (forceCss(key)) return '';
     return state.widths[key] ? (' style="width:' + state.widths[key] + 'px;min-width:' + state.widths[key] + 'px"') : '';
   }
 
@@ -170,8 +171,8 @@
   }
   // 열의 실제 지정폭(사용자가 리사이즈했으면 그 값, 아니면 CSS 변수)
   function colW(key, varName, def) {
-    // 좁은 화면에서 이름·양지번호는 저장된 드래그 폭을 무시하고 CSS 좁은 폭 사용
-    if (isNarrow() && NARROW_FORCE[key]) return cssPx(varName, def);
+    // 좁은 화면에서는 저장된 드래그 폭을 전부 무시하고 CSS 좁은 폭 사용
+    if (forceCss(key)) return cssPx(varName, def);
     if (state.widths[key]) return state.widths[key];
     return cssPx(varName, def);
   }
@@ -260,9 +261,10 @@
     Object.keys(state.widths).forEach(function (key) {
       var w = state.widths[key];
       var els = document.querySelectorAll('[data-col="' + key.replace(/"/g, '') + '"]');
-      // 좁은 화면에서 이름·양지번호는 저장폭을 적용하지 않고 인라인 스타일을 제거해
-      // CSS(:root/미디어쿼리)의 좁은 고정폭이 그대로 먹도록 한다.
-      if (narrow && NARROW_FORCE[key]) {
+      // ★좁은 화면(모바일)에서는 저장폭을 "모든 컬럼"에 대해 적용하지 않고 인라인 스타일을
+      //  제거해 CSS(:root/미디어쿼리)의 좁은 고정폭이 그대로 먹도록 한다. 이게 예전에 크게
+      //  늘려둔 폭 때문에 표가 화면을 넘치던 문제의 근본 해결이다.
+      if (narrow) {
         els.forEach(function (el) { el.style.width = ''; el.style.minWidth = ''; });
         return;
       }
@@ -609,8 +611,12 @@
   document.getElementById('btn-export').addEventListener('click', exportCsv);
 
   // ---------- 컬럼 리사이즈 (마우스 + 터치) ----------
+  // ★모바일(좁은 화면)에서는 드래그 리사이즈를 비활성화한다. 좁은 화면에서 손가락 드래그로
+  //  컬럼을 늘리면 표가 화면을 넘쳐 다른 컬럼이 잘리는 불안정 문제가 있었다. 모바일은 항상
+  //  화면에 맞는 안정적인 고정폭을 유지하고, 리사이즈는 PC(넓은 화면) 전용으로 둔다.
   var rz = null;
   function startResize(key, startX, thEl) {
+    if (isNarrow()) return; // 모바일에서는 리사이즈 금지
     rz = { key: key, startX: startX, startW: thEl.getBoundingClientRect().width };
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'col-resize';

@@ -531,6 +531,8 @@ html, body {
     display: inline; font-size: 10.5px; margin-left: 1px;
   }
   .header-actions .btn i { margin: 0; font-size: 11px; }
+  /* 모바일에서는 컬럼 드래그 리사이즈 핸들을 숨긴다(불안정 방지, 고정폭 유지) */
+  .col-resize { display: none !important; }
   .table-wrap { max-height: calc(100vh - 120px); }
   .sheet { font-size: 13px; }
   .cell-name input, .cell-phone input, .cell-money input { padding: 9px 3px; font-size: 13px; }
