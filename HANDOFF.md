@@ -108,11 +108,23 @@ npx wrangler pages deploy dist --project-name golf-penalty --branch main
 - **여러 명 실시간 공유**: 현재 localStorage → Cloudflare D1/KV 등으로 교체 필요
   (app.js의 load/save를 fetch API 호출로 바꾸고 Hono에 API 라우트 추가).
 
-## 10. 자료실 이미지에 대한 중요한 사실 ★★★
-- 자료실 이미지는 **소스 코드에 들어있지 않음**. 사용자가 브라우저에서
-  업로드한 것이라 **그 브라우저의 localStorage(state.assets)에만** base64로 저장됨.
-- 즉 소스 백업(tar.gz)에는 이미지가 포함되지 않음.
-- 이미지/입력 데이터까지 백업하려면 앱 안에서:
-  **관리자 로그인 → [전체 백업(JSON)]** 버튼으로 JSON 파일을 내려받아 따로 보관.
-  복원은 **관리자 → [백업 복원]** 으로 그 JSON을 올리면 됨.
+## 10. 자료실 이미지 = Cloudflare R2 (서버 저장) ★★★
+- 자료실 이미지는 이제 **서버(Cloudflare R2 버킷 `golf-penalty-assets`)에 저장**됨.
+  모든 사용자가 같은 이미지를 공유하고, 브라우저를 지워도 사라지지 않으며 영구 보관됨.
+- 소스 코드에는 이미지가 없음(당연). 이미지 백업은 R2가 자동으로 담당.
+- **API (src/index.tsx)**:
+  - `GET  /api/assets`      → 목록 JSON `{ok, assets:[{id,name,ts,url}]}` (인증 불필요)
+  - `GET  /api/assets/:id`  → 이미지 원본 바이너리 (인증 불필요, 공유)
+  - `POST /api/assets`      → 업로드 multipart(file,name) (헤더 `x-admin-key` 필요)
+  - `DELETE /api/assets/:id`→ 삭제 (헤더 `x-admin-key` 필요)
+- **쓰기 보호**: `checkAdmin()`가 `x-admin-key` 헤더를 secret `ADMIN_KEY`와 비교.
+  - 프론트(app.js)는 관리자 로그인 시 입력한 비밀번호를 `adminKey`에 저장해 헤더로 보냄.
+  - 로컬 개발: `.dev.vars`의 `ADMIN_KEY`(=admin1234). 깃 커밋 안 됨.
+  - 프로덕션: `npx wrangler pages secret put ADMIN_KEY --project-name golf-penalty` 로 설정.
+  - ⚠️ 관리자 PW를 바꾸면 app.js의 `ADMIN_PW`와 서버 secret `ADMIN_KEY`를 **둘 다** 바꿔야 함(일치 필요).
+- **R2 바인딩**: wrangler.jsonc `r2_buckets` → binding `ASSETS_BUCKET`, bucket `golf-penalty-assets`.
+  로컬은 `wrangler pages dev`가 자동으로 로컬 R2 생성. 배포는 `wrangler pages deploy`가 바인딩 반영.
+  - 배포 직후 별칭 도메인 캐시로 잠깐 404가 날 수 있으나 20~30초 뒤 정상.
+- **정산 데이터(회원/날짜/금액)** 는 여전히 브라우저 localStorage(`golf-penalty-sheet-v3`).
+  관리자 [전체 백업(JSON)]은 이 정산 데이터만 담음(이미지는 R2에 있으니 제외).
 - 파비콘은 `index.tsx` 내 인라인 SVG(⛳ 이모지) 사용. 아이콘은 Font Awesome CDN.
