@@ -141,8 +141,7 @@ html, body {
 .sheet {
   border-collapse: separate;
   border-spacing: 0;
-  width: max-content;
-  min-width: 100%;
+  width: max-content;   /* 지정한 컬럼 폭 합만큼만 차지(화면 채우려 늘어나지 않음) */
   font-size: 14px;
   font-variant-numeric: tabular-nums;
   table-layout: fixed;

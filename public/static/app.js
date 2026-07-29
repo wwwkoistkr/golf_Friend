@@ -66,7 +66,11 @@
   var body = document.getElementById('sheet-body');
   var foot = document.getElementById('sheet-foot');
 
-  function render() { renderHead(); renderBody(); renderFoot(); applyWidths(); }
+  function render() {
+    renderHead(); renderBody(); renderFoot(); applyWidths();
+    // 레이아웃 확정 후 sticky 오프셋 재측정(폰트 로딩·서브픽셀 대응)
+    requestAnimationFrame(syncStickyOffset);
+  }
 
   function wStyle(key) { return state.widths[key] ? (' style="width:' + state.widths[key] + 'px;min-width:' + state.widths[key] + 'px"') : ''; }
 
@@ -131,6 +135,19 @@
       document.querySelectorAll('[data-col="' + key.replace(/"/g, '') + '"]').forEach(function (el) {
         el.style.width = w + 'px'; el.style.minWidth = w + 'px';
       });
+    });
+    syncStickyOffset();
+  }
+
+  // 'No' 컬럼의 실제 렌더 폭을 측정해 '회원 이름' sticky 왼쪽 오프셋에 반영.
+  // (border-collapse/border 때문에 CSS 변수 값과 실제 폭이 1px 이상 어긋나
+  //  헤더-바디 사이에 흰 빈칸이 생기던 문제를 근본 해결)
+  function syncStickyOffset() {
+    var noTh = head.querySelector('th.col-no');
+    if (!noTh) return;
+    var w = noTh.getBoundingClientRect().width;
+    document.querySelectorAll('.col-name, .cell-name').forEach(function (el) {
+      el.style.left = w + 'px';
     });
   }
 
@@ -352,6 +369,7 @@
     var w = Math.max(40, Math.round(rz.startW + (x - rz.startX)));
     state.widths[rz.key] = w;
     document.querySelectorAll('[data-col="' + rz.key + '"]').forEach(function (el) { el.style.width = w + 'px'; el.style.minWidth = w + 'px'; });
+    syncStickyOffset();
   }
   function endResize() { if (rz) { rz = null; document.body.style.userSelect = ''; document.body.style.cursor = ''; save(); } }
 
@@ -524,4 +542,8 @@
   // ---------- 시작 ----------
   updateAdminBtn();
   render();
+  // 폰트 로딩 완료·창 크기 변경 후에도 sticky 오프셋 재보정
+  window.addEventListener('load', syncStickyOffset);
+  window.addEventListener('resize', syncStickyOffset);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(syncStickyOffset); }
 })();
