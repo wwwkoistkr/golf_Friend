@@ -102,12 +102,12 @@
         '</td>';
       var nameLocked = !isAdmin && !!m.name;
       var phoneLocked = !isAdmin && !!m.phone;
-      h += '<td class="cell-name"' + wStyle('name') + '><input type="text" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름" ' + (nameLocked ? 'readonly' : '') + ' /></td>';
-      h += '<td class="cell-phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" class="' + inputCls('phone-input', !!m.phone) + '" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="양지번호" ' + (phoneLocked ? 'readonly' : '') + ' /></td>';
+      h += '<td class="cell-name"' + wStyle('name') + '><input type="text" maxlength="6" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름6자" ' + (nameLocked ? 'readonly' : '') + ' /></td>';
+      h += '<td class="cell-phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" maxlength="6" class="' + inputCls('phone-input', !!m.phone) + '" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="번호6자" ' + (phoneLocked ? 'readonly' : '') + ' /></td>';
       state.dates.forEach(function (d) {
         var val = state.cells[cellKey(m.id, d.id)];
         var locked = !isAdmin && !!val;
-        h += '<td class="cell-money"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" data-m="' + m.id + '" data-d="' + d.id + '" class="' + inputCls('money-input', !!val) + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0" ' + (locked ? 'readonly' : '') + ' /></td>';
+        h += '<td class="cell-money"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" maxlength="13" data-m="' + m.id + '" data-d="' + d.id + '" class="' + inputCls('money-input', !!val) + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0000000000" ' + (locked ? 'readonly' : '') + ' /></td>';
       });
       h += '<td class="cell-total" data-total-member="' + m.id + '">' + fmt(memberTotal(m.id)) + '</td>';
       h += '</tr>';
