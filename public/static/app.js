@@ -7,6 +7,8 @@
   var ADMIN_ID = 'admin';
   var ADMIN_PW = 'admin1234';
 
+  var isAdmin = false; // 관리자 로그인 여부 (수정/삭제 권한)
+
   var state = load();
 
   // ---------- 저장/로드 ----------
@@ -77,7 +79,7 @@
         '<div class="date-head">' +
         '<span class="date-text">' + fmtDate(d.iso) + '</span>' +
         '<span class="date-sub">' + fmtDateFull(d.iso) + '</span>' +
-        '<button class="date-del" data-del-date="' + d.id + '" title="이 날짜 삭제"><i class="fas fa-xmark"></i></button>' +
+        (isAdmin ? '<button class="date-del" data-del-date="' + d.id + '" title="이 날짜 삭제"><i class="fas fa-xmark"></i></button>' : '') +
         '</div>' +
         '<span class="col-resize" data-rz="date:' + d.id + '"></span></th>';
     });
@@ -86,16 +88,26 @@
     head.innerHTML = h;
   }
 
+  // 일반 모드에서 "이미 값이 있는" 칸은 잠금(readonly). 관리자면 항상 편집 가능.
+  function inputCls(baseCls, hasValue) {
+    return baseCls + ((!isAdmin && hasValue) ? ' locked' : '');
+  }
+
   function renderBody() {
     var h = '';
     state.members.forEach(function (m, idx) {
       h += '<tr>';
-      h += '<td class="cell-no">' + (idx + 1) + '<button class="row-del" data-del-member="' + m.id + '" title="이 회원 삭제"><i class="fas fa-xmark"></i></button></td>';
-      h += '<td class="cell-name"' + wStyle('name') + '><input type="text" class="name-input" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름" /></td>';
-      h += '<td class="cell-phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" class="phone-input" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="양지번호" /></td>';
+      h += '<td class="cell-no">' + (idx + 1) +
+        (isAdmin ? '<button class="row-del" data-del-member="' + m.id + '" title="이 회원 삭제"><i class="fas fa-xmark"></i></button>' : '') +
+        '</td>';
+      var nameLocked = !isAdmin && !!m.name;
+      var phoneLocked = !isAdmin && !!m.phone;
+      h += '<td class="cell-name"' + wStyle('name') + '><input type="text" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름" ' + (nameLocked ? 'readonly' : '') + ' /></td>';
+      h += '<td class="cell-phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" class="' + inputCls('phone-input', !!m.phone) + '" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="양지번호" ' + (phoneLocked ? 'readonly' : '') + ' /></td>';
       state.dates.forEach(function (d) {
         var val = state.cells[cellKey(m.id, d.id)];
-        h += '<td class="cell-money"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" data-m="' + m.id + '" data-d="' + d.id + '" class="money-input' + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0" /></td>';
+        var locked = !isAdmin && !!val;
+        h += '<td class="cell-money"' + wStyle('date:' + d.id) + '><input type="text" inputmode="numeric" data-m="' + m.id + '" data-d="' + d.id + '" class="' + inputCls('money-input', !!val) + (val ? ' has-val' : '') + '" value="' + (val ? fmt(val) : '') + '" placeholder="0" ' + (locked ? 'readonly' : '') + ' /></td>';
       });
       h += '<td class="cell-total" data-total-member="' + m.id + '">' + fmt(memberTotal(m.id)) + '</td>';
       h += '</tr>';
@@ -135,10 +147,26 @@
     if (t.matches('.money-input')) {
       var num = parseNum(t.value);
       var k = cellKey(t.getAttribute('data-m'), t.getAttribute('data-d'));
+      // 일반 모드: 이미 저장된 값이 있으면 삭제/변경 금지 (관리자만 가능)
+      if (!isAdmin && state.cells[k]) {
+        alert('입력된 금액의 수정·삭제는 관리자만 할 수 있습니다.');
+        t.value = fmt(state.cells[k]); return;
+      }
       if (num) state.cells[k] = num; else delete state.cells[k];
       t.classList.toggle('has-val', !!num); refreshTotals(); save();
-    } else if (t.matches('.name-input')) { var m1 = findMember(t.getAttribute('data-name')); if (m1) { m1.name = t.value; save(); } }
-    else if (t.matches('.phone-input')) { var m2 = findMember(t.getAttribute('data-phone')); if (m2) { m2.phone = t.value; save(); } }
+    } else if (t.matches('.name-input')) {
+      var m1 = findMember(t.getAttribute('data-name'));
+      if (m1) {
+        if (!isAdmin && m1.name) { t.value = m1.name; alert('입력된 이름의 수정은 관리자만 할 수 있습니다.'); return; }
+        m1.name = t.value; save();
+      }
+    } else if (t.matches('.phone-input')) {
+      var m2 = findMember(t.getAttribute('data-phone'));
+      if (m2) {
+        if (!isAdmin && m2.phone) { t.value = m2.phone; alert('입력된 양지번호의 수정은 관리자만 할 수 있습니다.'); return; }
+        m2.phone = t.value; save();
+      }
+    }
   });
   body.addEventListener('focus', function (e) {
     var t = e.target; if (!t.matches('.money-input')) return;
@@ -199,6 +227,7 @@
 
   // ---------- 초기화 ----------
   document.getElementById('btn-clear').addEventListener('click', function () {
+    if (!isAdmin) { alert('초기화는 관리자만 할 수 있습니다.\n우측 상단 [관리자] 버튼으로 로그인해 주세요.'); return; }
     if (confirm('정산표(회원/날짜/금액)를 초기화할까요?\n※ 관리자 자료실 이미지는 유지됩니다.')) {
       state.members = makeDefaultMembers();
       state.dates = [makeDate(todayIso())];
@@ -273,9 +302,27 @@
   var loginError = document.getElementById('login-error');
   var viewSheet = document.getElementById('view-sheet');
   var viewAdmin = document.getElementById('view-admin');
-  var isAdmin = false;
 
-  document.getElementById('btn-admin').addEventListener('click', function () {
+  var btnAdmin = document.getElementById('btn-admin');
+
+  function updateAdminBtn() {
+    btnAdmin.innerHTML = isAdmin
+      ? '<i class="fas fa-lock-open"></i><span class="btn-text"> 관리자ON</span>'
+      : '<i class="fas fa-user-shield"></i><span class="btn-text"> 관리자</span>';
+    btnAdmin.classList.toggle('admin-on', isAdmin);
+    var banner = document.getElementById('mode-banner');
+    if (banner) {
+      if (isAdmin) {
+        banner.className = 'mode-banner mode-admin';
+        banner.innerHTML = '<i class="fas fa-lock-open"></i> 관리자 모드 · 모든 값을 <b>수정·삭제</b>할 수 있습니다';
+      } else {
+        banner.className = 'mode-banner mode-user';
+        banner.innerHTML = '<i class="fas fa-pen"></i> 일반 사용자 모드 · <b>새 입력만</b> 가능합니다 (수정·삭제는 관리자)';
+      }
+    }
+  }
+
+  btnAdmin.addEventListener('click', function () {
     if (isAdmin) { openAdmin(); return; }
     loginError.classList.add('hidden'); loginId.value = ''; loginPw.value = '';
     loginModal.classList.remove('hidden');
@@ -285,7 +332,8 @@
   loginModal.addEventListener('click', function (e) { if (e.target === loginModal) loginModal.classList.add('hidden'); });
   function tryLogin() {
     if (loginId.value.trim() === ADMIN_ID && loginPw.value === ADMIN_PW) {
-      isAdmin = true; loginModal.classList.add('hidden'); openAdmin();
+      isAdmin = true; loginModal.classList.add('hidden');
+      updateAdminBtn(); render(); openAdmin();
     } else { loginError.classList.remove('hidden'); }
   }
   document.getElementById('login-ok').addEventListener('click', tryLogin);
@@ -293,8 +341,14 @@
   loginId.addEventListener('keydown', function (e) { if (e.key === 'Enter') loginPw.focus(); });
 
   function openAdmin() { viewSheet.classList.add('hidden'); viewAdmin.classList.remove('hidden'); renderAdmin(); }
-  function closeAdmin() { viewAdmin.classList.add('hidden'); viewSheet.classList.remove('hidden'); }
+  function closeAdmin() { viewAdmin.classList.add('hidden'); viewSheet.classList.remove('hidden'); render(); }
   document.getElementById('btn-admin-close').addEventListener('click', closeAdmin);
+
+  // 관리자 로그아웃
+  document.getElementById('btn-logout').addEventListener('click', function () {
+    isAdmin = false; updateAdminBtn(); closeAdmin();
+    alert('관리자 모드를 종료했습니다. 이제 일반 사용자(입력만 가능) 상태입니다.');
+  });
 
   function renderAdmin() {
     // 요약
@@ -390,5 +444,6 @@
   });
 
   // ---------- 시작 ----------
+  updateAdminBtn();
   render();
 })();

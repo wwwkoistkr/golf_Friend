@@ -34,6 +34,9 @@ app.get('/', (c) => {
   </div>
 
   <main class="app-main" id="view-sheet">
+    <div id="mode-banner" class="mode-banner mode-user">
+      <i class="fas fa-pen"></i> 일반 사용자 모드 · <b>새 입력만</b> 가능합니다 (수정·삭제는 관리자)
+    </div>
     <div class="table-wrap" id="table-wrap">
       <table id="sheet" class="sheet">
         <thead id="sheet-head"></thead>
@@ -48,8 +51,12 @@ app.get('/', (c) => {
     <section class="admin-panel">
       <div class="admin-top">
         <h2><i class="fas fa-database"></i> 관리자 자료실</h2>
-        <button id="btn-admin-close" class="btn btn-gray"><i class="fas fa-xmark"></i> 닫기</button>
+        <div class="admin-top-btns">
+          <button id="btn-admin-close" class="btn btn-gray"><i class="fas fa-table"></i> 정산표로</button>
+          <button id="btn-logout" class="btn btn-red"><i class="fas fa-right-from-bracket"></i> 로그아웃</button>
+        </div>
       </div>
+      <p class="admin-note"><i class="fas fa-circle-info"></i> 관리자 모드에서는 정산표의 모든 값을 <b>수정·삭제</b>할 수 있습니다. 로그아웃하면 일반 사용자는 <b>새 입력만</b> 가능합니다.</p>
 
       <div class="admin-cards">
         <div class="admin-card">

@@ -53,7 +53,32 @@ html, body {
 .btn-green { background: var(--green); color: #fff; }
 .btn-gray { background: #cfd8dc; color: var(--text); }
 .btn-gold { background: var(--gold); color: #3a2a00; }
-.btn-gold:hover, .btn-green:hover, .btn-gray:hover { filter: brightness(.96); }
+.btn-red { background: var(--red); color: #fff; }
+.btn-gold:hover, .btn-green:hover, .btn-gray:hover, .btn-red:hover { filter: brightness(.96); }
+.btn.admin-on { background: #ffe082; color: #5d4000; box-shadow: 0 0 0 2px #fff inset; }
+
+/* ===== Mode banner ===== */
+.mode-banner {
+  border-radius: 8px; padding: 8px 12px; margin-bottom: 8px;
+  font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+}
+.mode-banner.mode-user { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+.mode-banner.mode-admin { background: #fff3e0; color: #e65100; border: 1px solid #ffb74d; }
+.mode-banner b { font-weight: 800; }
+
+/* 잠긴(읽기전용) 입력칸 */
+.money-input.locked, .name-input.locked, .phone-input.locked {
+  cursor: default; background: transparent;
+}
+.money-input.locked:focus, .name-input.locked:focus, .phone-input.locked:focus {
+  outline: none; background: #f5f5f5;
+}
+.admin-note {
+  background: #fff3e0; border: 1px solid #ffb74d; color: #e65100;
+  border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 14px;
+}
+.admin-note b { font-weight: 800; }
+.admin-top-btns { display: flex; gap: 8px; }
 
 /* ===== Manager bar ===== */
 .manager-bar {
