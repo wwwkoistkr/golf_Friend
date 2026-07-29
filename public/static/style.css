@@ -492,16 +492,24 @@ html, body {
   .manager-bar input { min-width: 90px; flex: 1; }
   .table-wrap { max-height: calc(100vh - 160px); }
   .sheet { font-size: 13px; }
-  /* 모바일: px 고정폭을 줄여 이름+번호+날짜(잃은돈)+합계가 함께 보이도록 */
+  /* 모바일: 이름·번호 칸을 더 좁혀서 날짜(잃은돈)+합계가 넉넉히 보이도록.
+     (이름은 보통 2~3자라 72px로도 충분하고, 6자 입력 시엔 칸 안에서 스크롤됨) */
   :root {
-    --w-no: 34px;
-    --w-name: 80px;
-    --w-phone: 60px;
-    --w-date: 74px;
-    --w-total: 74px;
+    --w-no: 30px;
+    --w-name: 70px;
+    --w-phone: 48px;
+    --w-date: 82px;
+    --w-total: 78px;
   }
   .date-head .date-lost { font-size: 9px; padding: 1px 5px; }
-  .cell-name input, .cell-phone input, .cell-money input { padding: 9px 4px; font-size: 13px; }
+  .cell-name input, .cell-phone input, .cell-money input { padding: 9px 3px; font-size: 13px; }
+  /* 좁아진 이름·번호 칸에 맞춰 글자·플레이스홀더를 조금 작게 */
+  .cell-name input { font-size: 12.5px; }
+  .cell-phone input { font-size: 12px; letter-spacing: 0; }
+  .cell-name input::placeholder, .cell-phone input::placeholder { font-size: 10px; }
+  /* 좁은 칸에 맞춰 헤더 글자를 작게 + 2줄 허용(칸 폭이 헤더 글자에 눌려 안 줄어드는 것 방지) */
+  .sheet thead th { padding: 9px 2px; font-size: 12px; letter-spacing: 0; }
+  .sheet thead th.col-name, .sheet thead th.col-phone { white-space: normal; word-break: keep-all; line-height: 1.15; }
   .admin-cards { grid-template-columns: 1fr; }
   .asset-list { grid-template-columns: repeat(auto-fill, minmax(46%, 1fr)); }
 }
