@@ -351,8 +351,8 @@ html, body {
 
 /* ===== 지출액 / 잔액 요약 (표 sticky 밖 별도 영역 — 모바일 키패드 안정) ===== */
 .money-summary {
-  max-width: 380px;
-  margin: 10px auto 4px;
+  max-width: 460px;         /* 카드 전체 위치(폭)를 전 버전으로 환원 */
+  margin: 14px auto 4px;    /* 상단 여백도 전 버전으로 환원 */
   background: #fff;
   border: 1px solid #d8e6dc;
   border-radius: 10px;
@@ -400,8 +400,8 @@ html, body {
 .ms-row.ms-balance .ms-value { font-size: 17px; }
 
 @media (max-width: 640px) {
-  .money-summary { max-width: none; margin: 10px 6px 4px; }
-  .ms-row { padding: 6px 12px; min-height: 36px; }
+  .money-summary { margin: 12px 6px 4px; }   /* 카드 위치(여백)를 전 버전으로 환원 */
+  .ms-row { padding: 6px 12px; min-height: 36px; }  /* 행 높이는 콤팩트 유지 */
 }
 
 /* ===== Admin panel ===== */
