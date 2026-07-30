@@ -100,6 +100,13 @@
   function saveLocal() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {} }
   // save(): 로컬에 즉시 저장 + 서버(R2)에 디바운스 저장하여 모든 기기가 공유하게 함.
   function save() { saveLocal(); scheduleServerSave(); }
+  // 입력이 끝난 뒤(포커스 해제) 미뤄둔 서버 데이터를 반영한다.
+  function flushPendingServerData() {
+    if (pendingServerData && !isEditing()) {
+      var d = pendingServerData; pendingServerData = null;
+      applyServerData(d);
+    }
+  }
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 
   // ============================================================
@@ -112,6 +119,7 @@
   var isSavingToServer = false; // 저장 중 중복 방지
   var pendingServerSave = false;// 저장 중에 또 변경되면 다시 저장
   var lastAppliedJson = '';     // 폴링 시 동일 데이터면 무시하기 위한 캐시
+  var pendingServerData = null; // 입력 중이라 반영을 미룬 서버 데이터(입력 끝나면 적용)
 
   function serializeState() {
     return {
@@ -158,9 +166,19 @@
     });
   }
 
-  // 서버에서 받은 데이터를 현재 state 에 적용(입력 포커스 중이면 건드리지 않음)
+  // 사용자가 표 안의 입력칸에 타이핑 중인지(포커스) 확인 — 그러면 화면을 다시 그리지 않는다.
+  function isEditing() {
+    var ae = document.activeElement;
+    return !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA') &&
+      ae.closest && (ae.closest('#view-sheet') || ae.closest('.sheet')));
+  }
+
+  // 서버에서 받은 데이터를 현재 state 에 적용.
+  // ★입력(포커스) 중에는 render()로 DOM을 갈아치우면 input이 사라져 키패드가 닫히므로,
+  //  타이핑 중이면 화면 갱신을 미룬다(입력이 끝난 뒤 blur 시점 등에 반영).
   function applyServerData(d) {
     if (!d || !d.members) return;
+    if (isEditing()) { pendingServerData = d; return; }
     state.members = d.members;
     state.dates = (d.dates && d.dates.length) ? d.dates : state.dates;
     state.cells = d.cells || {};
@@ -355,7 +373,7 @@
     state.members.forEach(function (m, idx) {
       h += '<tr>';
       h += '<td class="cell-no">' + (idx + 1) +
-        (isAdmin ? '<button class="row-del" data-del-member="' + m.id + '" title="이 회원 삭제"><i class="fas fa-xmark"></i></button>' : '') +
+        '<button class="row-del" data-del-member="' + m.id + '" title="이 회원 행 삭제"><i class="fas fa-xmark"></i></button>' +
         '</td>';
       h += '<td class="cell-name" data-col="name"' + wStyle('name') + '><input type="text" maxlength="6" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름6자" /></td>';
       h += '<td class="cell-phone" data-col="phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" maxlength="6" class="' + inputCls('phone-input', !!m.phone) + '" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="번호6자" /></td>';
@@ -501,18 +519,15 @@
     refreshBalance(); // 지출액이 바뀌면 잔액 즉시 재계산
     save();
   });
-  // 포커스(입력 시작): 콤마를 제거해 순수 숫자로 편집하기 쉽게 — 값 자체는 그대로라 키패드에 영향 없음
-  foot.addEventListener('focus', function (e) {
-    var t = e.target; if (!t.matches('.extra-input')) return;
-    var num = parseNum(t.value);
-    var plain = num ? String(num) : '';
-    if (t.value !== plain) t.value = plain; // 값이 다를 때만 1회 변경(입력 시작 전이라 안전)
-  }, true);
-  // blur(입력 완료): 콤마 표기로 정리
+  // 포커스(입력 시작): ★안드로이드 크롬 대응 — focus 콜백에서 value를 바꾸면
+  //  소프트키보드가 닫히는 경우가 있어, 여기서는 값을 절대 건드리지 않는다.
+  //  콤마 제거는 사용자가 실제로 첫 글자를 입력하는 순간(첫 input)에만 1회 처리한다.
+  // blur(입력 완료): 콤마 표기로 정리 + 미뤄둔 서버 데이터 반영
   foot.addEventListener('blur', function (e) {
     var t = e.target; if (!t.matches('.extra-input')) return;
     var num = parseNum(t.value);
     t.value = num ? fmt(num) : '';
+    setTimeout(flushPendingServerData, 50);
   }, true);
 
   body.addEventListener('focus', function (e) {
@@ -524,7 +539,10 @@
   body.addEventListener('blur', function (e) {
     var t = e.target; if (!t.matches('.money-input')) return;
     var num = parseNum(t.value); t.value = num ? fmt(num) : '';
+    setTimeout(flushPendingServerData, 50);
   }, true);
+  // 이름/전화 입력칸 등에서도 포커스 해제되면 미뤄둔 데이터 반영
+  body.addEventListener('focusout', function () { setTimeout(flushPendingServerData, 100); });
 
   // 표 입력칸에서 Enter → 다음 회원(아래 행)의 같은 열로 이동.
   // 마지막 행에서 Enter면 회원을 자동 추가하고 새 행으로 이동(추가입력처럼 계속 넘어감).

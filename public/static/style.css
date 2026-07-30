@@ -254,11 +254,19 @@ html, body {
   padding: 0 3px;
   position: sticky; left: 0; z-index: 6;
 }
+/* 회원 행 삭제 버튼: No 숫자 아래에 작은 빨간 원형 x (모바일에서도 누르기 쉽게) */
+.cell-no { position: relative; }
 .row-del {
-  background: transparent; border: none; color: #b0bec5;
-  cursor: pointer; font-size: 10px; margin-left: 2px;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; margin: 3px auto 0;
+  background: #fde8e8; border: 1px solid #f5b5b5; border-radius: 50%;
+  color: #d9534f; cursor: pointer; font-size: 11px; line-height: 1;
+  padding: 0; -webkit-tap-highlight-color: transparent;
 }
-.row-del:hover { color: var(--red); }
+.row-del:hover, .row-del:active { background: var(--red); border-color: var(--red); color: #fff; }
+/* 좁은 화면(모바일)에서는 No 셀이 매우 좁아지므로 버튼을 숫자 아래 블록으로 */
+.cell-no { line-height: 1.1; }
+.cell-no .row-del { display: flex; }
 
 /* --- Input cells --- 헤더가 가운데 정렬이므로 입력칸도 전부 가운데 정렬 --- */
 .cell-name, .cell-phone, .cell-money { padding: 0; background: #fff; }
