@@ -405,37 +405,29 @@
     h += '<td class="foot-grand">' + fmt(grandTotal()) + '</td>';
     h += '</tr>';
 
-    // ----- 추가 행: 지출액 / 잔액 -----
-    // ★날짜별 합계 행과 "완전히 동일한 셀 구조"로 만들어야 합계 열과 정확히 정렬된다.
-    //  구조: foot-no + foot-extra-label(colspan=2) + [foot-fold 빈칸] + 날짜별 빈칸 × N + 금액셀(합계열 위치, sticky-right)
-    var ex = (state.extra && state.extra.expense) || 0;
-    var balance = grandTotal() - ex;  // 잔액 = 날짜별 합계(총합) - 지출액 (자동 계산)
-
-    // 공통: 라벨 뒤 ~ 합계열 앞까지의 빈 셀들을 만든다(날짜별 합계 행과 열 개수 일치)
-    function extraFillerCells() {
-      var f = '';
-      if (_vd.hiddenCount > 0) { f += '<td class="foot-extra-filler"></td>'; }
-      _vd.visible.forEach(function (d) { f += '<td class="foot-extra-filler" data-col="date:' + d.id + '"' + wStyle('date:' + d.id) + '></td>'; });
-      return f;
-    }
-
-    // 지출액: 누구나 입력·수정 가능한 금액 입력칸(합계 열과 같은 sticky-right 위치)
-    h += '<tr class="foot-extra-row">';
-    h += '<td class="foot-no"></td>';
-    h += '<td class="foot-extra-label" colspan="2"><i class="fas fa-money-bill-wave"></i>지출액</td>';
-    h += extraFillerCells();
-    h += '<td class="foot-extra-cell"><input type="text" inputmode="numeric" pattern="[0-9]*" class="extra-input' + (ex ? ' has-val' : '') + '" data-extra="expense" value="' + (ex ? fmt(ex) : '') + '" placeholder="0" /></td>';
-    h += '</tr>';
-
-    // 잔액: 날짜별 합계 - 지출액 자동 계산(입력 불가, 표시만)
-    h += '<tr class="foot-extra-row foot-balance-row">';
-    h += '<td class="foot-no"></td>';
-    h += '<td class="foot-extra-label" colspan="2"><i class="fas fa-wallet"></i>잔액</td>';
-    h += extraFillerCells();
-    h += '<td class="foot-extra-cell foot-balance-cell' + (balance < 0 ? ' neg' : '') + '" data-balance>' + fmt(balance) + '</td>';
-    h += '</tr>';
-
     foot.innerHTML = h;
+
+    // 지출액/잔액은 표(sticky) 밖 별도 영역(#money-summary)에서 렌더한다. → 모바일 키패드 안정
+    renderMoneySummary();
+  }
+
+  // ----- 지출액/잔액 요약 영역(표 밖) -----
+  //  ★모바일 키패드가 사라지던 근본 원인이던 "sticky tfoot 셀 안의 입력칸"을 제거하고,
+  //   일반 블록 레이아웃의 넓은 입력칸으로 옮겼다. sticky 재계산/뷰포트 리사이즈 영향 없음.
+  function renderMoneySummary() {
+    var total = grandTotal();
+    var ex = (state.extra && state.extra.expense) || 0;
+    var balance = total - ex;
+    var elTotal = document.getElementById('ms-total');
+    var elBal = document.getElementById('ms-balance');
+    var input = document.getElementById('ms-expense-input');
+    if (elTotal) elTotal.textContent = fmt(total);
+    if (elBal) { elBal.textContent = fmt(balance); elBal.classList.toggle('neg', balance < 0); }
+    // 입력칸은 사용자가 타이핑 중이면 값을 덮어쓰지 않는다(포커스 유지).
+    if (input && document.activeElement !== input) {
+      input.value = ex ? fmt(ex) : '';
+      input.classList.toggle('has-val', !!ex);
+    }
   }
 
   function applyWidths() {
@@ -458,14 +450,8 @@
     state.members.forEach(function (m) { var el = body.querySelector('[data-total-member="' + m.id + '"]'); if (el) el.textContent = fmt(memberTotal(m.id)); });
     state.dates.forEach(function (d) { var el = foot.querySelector('[data-total-date="' + d.id + '"]'); if (el) el.textContent = fmt(dateTotal(d.id)); });
     var g = foot.querySelector('.foot-grand'); if (g) g.textContent = fmt(grandTotal());
-    // 날짜별 합계가 바뀌면 잔액(=합계-지출액)도 갱신
-    var b = foot.querySelector('[data-balance]');
-    if (b) {
-      var ex = (state.extra && state.extra.expense) || 0;
-      var balance = grandTotal() - ex;
-      b.textContent = fmt(balance);
-      b.classList.toggle('neg', balance < 0);
-    }
+    // 날짜별 합계가 바뀌면 표 밖 요약(합계/잔액)도 갱신
+    renderMoneySummary();
   }
 
   function findMember(id) { for (var i = 0; i < state.members.length; i++) if (state.members[i].id === id) return state.members[i]; return null; }
@@ -491,44 +477,47 @@
       if (m2) { m2.phone = t.value; save(); }
     }
   });
-  // 잔액 셀(자동 계산: 날짜별 합계 - 지출액)을 실시간 갱신
+  // 잔액(자동 계산: 날짜별 합계 - 지출액)을 실시간 갱신 (표 밖 요약 영역)
   function refreshBalance() {
-    var el = foot.querySelector('[data-balance]');
+    var el = document.getElementById('ms-balance');
     if (!el) return;
     var ex = (state.extra && state.extra.expense) || 0;
     var balance = grandTotal() - ex;
     el.textContent = fmt(balance);
     el.classList.toggle('neg', balance < 0);
   }
-  // ----- 지출액 입력(합계 열 아래): 누구나 입력·수정 가능 -----
-  // ★★모바일 키패드가 사라지던 근본 원인 제거 ★★
-  //  이전에는 매 입력마다 t.value 재작성 + setSelectionRange 를 호출했는데,
-  //  이 조작이 iOS/안드로이드 소프트키보드의 입력 세션(composition)을 끊어
-  //  키패드가 떴다가 바로 사라지는 증상을 유발했다.
-  //  → 입력 중에는 t.value / 커서를 절대 건드리지 않고, 값 저장만 한다.
-  //    콤마 표기는 입력이 끝난 blur 시점에만 적용한다.
-  foot.addEventListener('input', function (e) {
-    var t = e.target; if (!t.matches('.extra-input')) return;
-    var key = t.getAttribute('data-extra'); // 'expense'만 입력 가능
-    if (key !== 'expense') return;
-    var num = parseNum(t.value); // 콤마·비숫자 문자는 무시하고 숫자만 추출
-    if (num < 0) num = 0;
-    if (!state.extra) state.extra = { expense: 0, balance: 0 };
-    state.extra[key] = num;
-    t.classList.toggle('has-val', !!num);
-    refreshBalance(); // 지출액이 바뀌면 잔액 즉시 재계산
-    save();
-  });
-  // 포커스(입력 시작): ★안드로이드 크롬 대응 — focus 콜백에서 value를 바꾸면
-  //  소프트키보드가 닫히는 경우가 있어, 여기서는 값을 절대 건드리지 않는다.
-  //  콤마 제거는 사용자가 실제로 첫 글자를 입력하는 순간(첫 input)에만 1회 처리한다.
-  // blur(입력 완료): 콤마 표기로 정리 + 미뤄둔 서버 데이터 반영
-  foot.addEventListener('blur', function (e) {
-    var t = e.target; if (!t.matches('.extra-input')) return;
-    var num = parseNum(t.value);
-    t.value = num ? fmt(num) : '';
-    setTimeout(flushPendingServerData, 50);
-  }, true);
+  // ============================================================
+  //  지출액 입력 (표 밖 별도 영역 #ms-expense-input) — 누구나 입력·수정 가능
+  //  ★★모바일 키패드 사라짐 근본 해결 ★★
+  //   1) sticky tfoot 셀에서 일반 블록 입력칸으로 이동 → 뷰포트 리사이즈/sticky 재계산 영향 없음
+  //   2) 입력 중에는 value/커서를 절대 건드리지 않음 (콤마 표기는 blur 때만)
+  //   3) 입력 중에는 서버 저장을 걸지 않음 → 409/applyServerData→render 연쇄가 없어 DOM 안 갈아엎음
+  //      (로컬 저장만 즉시, 서버 저장은 blur 때 딱 1회)
+  var msInput = document.getElementById('ms-expense-input');
+  if (msInput) {
+    // 포커스 시: 콤마를 제거한 숫자만 남기고 전체 선택 → 이어치기 시 콤마가 끼는 문제 방지.
+    //  (표 밖 일반 입력칸이라 sticky/뷰포트 영향이 없어 안드로이드 키패드가 닫히지 않음)
+    msInput.addEventListener('focus', function () {
+      var num = parseNum(msInput.value);
+      msInput.value = num ? String(num) : '';
+      setTimeout(function () { try { msInput.select(); } catch (x) {} }, 0);
+    });
+    msInput.addEventListener('input', function () {
+      var num = parseNum(msInput.value); // 콤마·비숫자 무시, 숫자만
+      if (num < 0) num = 0;
+      if (!state.extra) state.extra = { expense: 0, balance: 0 };
+      state.extra.expense = num;
+      msInput.classList.toggle('has-val', !!num);
+      refreshBalance();      // 잔액만 즉시 갱신(입력칸은 건드리지 않음)
+      saveLocal();           // 로컬에만 즉시 저장 (서버 저장은 blur 때)
+    });
+    msInput.addEventListener('blur', function () {
+      var num = parseNum(msInput.value);
+      msInput.value = num ? fmt(num) : '';      // 콤마 표기 정리
+      scheduleServerSave();                     // 입력 완료 후에만 서버 저장
+      setTimeout(flushPendingServerData, 50);   // 미뤄둔 서버 데이터 반영
+    });
+  }
 
   body.addEventListener('focus', function (e) {
     var t = e.target; if (!t.matches('.money-input')) return;
