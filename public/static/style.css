@@ -361,10 +361,17 @@ html, body {
   border-left: 2px solid var(--gold);
 }
 
-/* ===== 지출액 / 잔액 요약 (표 sticky 밖 별도 영역 — 모바일 키패드 안정) ===== */
+/* ===== 지출액 / 잔액 요약 (표 sticky 밖 별도 영역 — 모바일 키패드 안정) =====
+   PC/모바일 모두: 표(.table-wrap)와 같은 왼쪽 기준선에서 시작하고,
+   표 폭에 맞춰(단 최대폭 상한) 배치 → 표 바로 아래 자연스럽게 정렬됨. */
 .money-summary {
-  max-width: 460px;         /* 카드 전체 위치(폭) */
-  margin: 14px auto 4px;    /* 상단 여백 */
+  /* 폭은 JS(syncSummaryWidth)가 표(.sheet) 폭에 맞춰 인라인으로 지정.
+     JS 실행 전 기본값 fallback 아래. */
+  width: -moz-fit-content;
+  width: fit-content;
+  min-width: 320px;          /* 너무 좁아지지 않게 */
+  max-width: 100%;           /* 화면 넘침 방지 */
+  margin: 14px 0 4px;        /* 왼쪽 정렬(가운데 auto 제거) → 표와 같은 기준선 */
   background: #fff;
   border: 1px solid #d8e6dc;
   border-radius: 10px;

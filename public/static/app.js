@@ -444,6 +444,20 @@
       input.value = ex ? fmt(ex) : '';
       input.classList.toggle('has-val', !!ex);
     }
+    syncSummaryWidth();
+  }
+
+  // 요약 카드(날짜별 합계/지출액/잔액) 폭을 표(.sheet) 폭에 정확히 맞춘다.
+  // → PC/모바일 모두 표 바로 아래 같은 왼쪽 기준선에서 표와 동일한 폭으로 정렬됨.
+  function syncSummaryWidth() {
+    var card = document.getElementById('money-summary');
+    var sheet = document.getElementById('sheet');
+    if (!card || !sheet) return;
+    // 다음 프레임에 실제 렌더 폭 측정(레이아웃 확정 후).
+    requestAnimationFrame(function () {
+      var w = Math.round(sheet.getBoundingClientRect().width);
+      if (w > 0) card.style.width = w + 'px';
+    });
   }
 
   function applyWidths() {
@@ -665,6 +679,7 @@
   window.addEventListener('resize', function () {
     if (qpTarget) positionQuickPad(qpTarget);
     syncHeaderWidth();
+    syncSummaryWidth();  // 요약 카드 폭도 표 폭에 재동기화
     // 화면 폭이 바뀌면 접힘 개수도 달라지므로 다시 렌더(입력 중이면 건너뜀)
     if (resizeReRenderTimer) clearTimeout(resizeReRenderTimer);
     resizeReRenderTimer = setTimeout(function () {
