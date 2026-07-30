@@ -184,7 +184,7 @@ app.get('/', (c) => {
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛳</text></svg>">
   <title>골프등급표</title>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="/static/style.css?v=20260730o" rel="stylesheet">
+  <link href="/static/style.css?v=20260730p" rel="stylesheet">
 </head>
 <body>
   <header class="app-header" id="app-header">
@@ -247,7 +247,6 @@ app.get('/', (c) => {
             <label class="lbl-row"><span>상단 제목</span><input id="lbl-title" type="text" maxlength="24" placeholder="골프등급표" /></label>
             <label class="lbl-row"><span>날짜칸 의미</span><input id="lbl-lost" type="text" maxlength="12" placeholder="잃은 돈" /></label>
             <label class="lbl-row"><span>이름 열 제목</span><input id="lbl-name" type="text" maxlength="12" placeholder="회원 이름" /></label>
-            <label class="lbl-row"><span>번호 열 제목</span><input id="lbl-phone" type="text" maxlength="12" placeholder="양지번호" /></label>
             <label class="lbl-row"><span>합계 열 제목</span><input id="lbl-total" type="text" maxlength="12" placeholder="합계" /></label>
           </div>
           <div class="admin-btns">
@@ -321,7 +320,7 @@ app.get('/', (c) => {
     </div>
   </div>
 
-  <script src="/static/app.js?v=20260730o"></script>
+  <script src="/static/app.js?v=20260730p"></script>
 </body>
 </html>`)
 })

@@ -62,7 +62,7 @@
       title: '골프등급표',                 // 상단 제목
       lost: '잃은 돈',                     // 날짜 칸 안 금액의 의미
       colName: '회원 이름',                // 이름 열 제목
-      colPhone: '양지번호',                // 번호 열 제목
+      colPhone: '평균금액',                // 평균금액 열 제목(자동계산)
       colTotal: '합계'                     // 합계 열 제목
     };
   }
@@ -74,6 +74,8 @@
     Object.keys(def).forEach(function (k) {
       out[k] = (typeof saved[k] === 'string' && saved[k].trim()) ? saved[k] : def[k];
     });
+    // ★평균금액 열은 자동계산 열이므로 사용자 라벨과 무관하게 항상 '평균금액'으로 고정
+    out.colPhone = '평균금액';
     return out;
   }
   // 개별 라벨 읽기 (없으면 기본값)
@@ -244,6 +246,17 @@
   function memberTotal(id) { var s = 0; state.dates.forEach(function (d) { s += Number(state.cells[cellKey(id, d.id)]) || 0; }); return s; }
   function dateTotal(id) { var s = 0; state.members.forEach(function (m) { s += Number(state.cells[cellKey(m.id, id)]) || 0; }); return s; }
   function grandTotal() { var s = 0; state.members.forEach(function (m) { s += memberTotal(m.id); }); return s; }
+  // ★평균금액: 그 회원이 "금액을 입력한 날짜" 개수로 합계를 나눈 값(소수점 반올림 정수).
+  //  입력한 날짜가 하나도 없으면 0.
+  function memberAverage(id) {
+    var sum = 0, cnt = 0;
+    state.dates.forEach(function (d) {
+      var v = Number(state.cells[cellKey(id, d.id)]) || 0;
+      if (v) { sum += v; cnt++; }
+    });
+    if (cnt === 0) return 0;
+    return Math.round(sum / cnt);
+  }
 
   // ---------- 렌더 ----------
   var head = document.getElementById('sheet-head');
@@ -376,7 +389,8 @@
         '<button class="row-del" data-del-member="' + m.id + '" title="이 회원 행 삭제"><i class="fas fa-xmark"></i></button>' +
         '</td>';
       h += '<td class="cell-name" data-col="name"' + wStyle('name') + '><input type="text" maxlength="6" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름6자" /></td>';
-      h += '<td class="cell-phone" data-col="phone"' + wStyle('phone') + '><input type="tel" inputmode="tel" maxlength="6" class="' + inputCls('phone-input', !!m.phone) + '" data-phone="' + m.id + '" value="' + escapeHtml(m.phone) + '" placeholder="번호6자" /></td>';
+      // 평균금액: 자동계산 표시(입력 불가). 회원별 평균금액 = 합계 ÷ 입력한 날짜수(반올림)
+      h += '<td class="cell-phone cell-avg" data-col="phone"' + wStyle('phone') + ' data-avg-member="' + m.id + '">' + fmt(memberAverage(m.id)) + '</td>';
       // 접힌 날짜: 각 회원의 접힌 부분 합계를 요약 셀로 표시
       if (_vd.hiddenCount > 0) {
         var hSum = hiddenMemberTotal(m.id, _vd.hiddenIds);
@@ -456,6 +470,8 @@
 
   function refreshTotals() {
     state.members.forEach(function (m) { var el = body.querySelector('[data-total-member="' + m.id + '"]'); if (el) el.textContent = fmt(memberTotal(m.id)); });
+    // 평균금액 열 갱신(금액 입력이 바뀌면 즉시 반영)
+    state.members.forEach(function (m) { var av = body.querySelector('[data-avg-member="' + m.id + '"]'); if (av) av.textContent = fmt(memberAverage(m.id)); });
     state.dates.forEach(function (d) { var el = foot.querySelector('[data-total-date="' + d.id + '"]'); if (el) el.textContent = fmt(dateTotal(d.id)); });
     var g = foot.querySelector('.foot-grand'); if (g) g.textContent = fmt(grandTotal());
     // 날짜별 합계가 바뀌면 잔액(=합계-지출액)도 갱신
@@ -480,9 +496,6 @@
     } else if (t.matches('.name-input')) {
       var m1 = findMember(t.getAttribute('data-name'));
       if (m1) { m1.name = t.value; save(); }
-    } else if (t.matches('.phone-input')) {
-      var m2 = findMember(t.getAttribute('data-phone'));
-      if (m2) { m2.phone = t.value; save(); }
     }
   });
   // 잔액(자동 계산: 날짜별 합계 - 지출액)을 실시간 갱신 (표 안 tfoot 셀)
@@ -557,7 +570,6 @@
     var t = e.target;
     var kind = null, id = null;
     if (t.matches('.name-input')) { kind = 'name'; id = t.getAttribute('data-name'); }
-    else if (t.matches('.phone-input')) { kind = 'phone'; id = t.getAttribute('data-phone'); }
     else if (t.matches('.money-input')) { kind = 'money'; id = t.getAttribute('data-m'); }
     else return;
     e.preventDefault();
@@ -575,7 +587,7 @@
     var rows = body.querySelectorAll('tr');
     var next = rows[idx + 1];
     if (!next) return;
-    var sel = kind === 'name' ? '.name-input' : kind === 'phone' ? '.phone-input' : '.money-input';
+    var sel = kind === 'name' ? '.name-input' : '.money-input';
     var el;
     if (kind === 'money') {
       // 금액은 같은 날짜(data-d) 열을 유지
@@ -663,7 +675,7 @@
     if (resizeReRenderTimer) clearTimeout(resizeReRenderTimer);
     resizeReRenderTimer = setTimeout(function () {
       var ae = document.activeElement;
-      if (ae && (ae.classList && (ae.classList.contains('name-input') || ae.classList.contains('phone-input') || ae.classList.contains('money-input')))) return;
+      if (ae && (ae.classList && (ae.classList.contains('name-input') || ae.classList.contains('money-input')))) return;
       // 폭이 바뀌면 좁은화면 판정도 달라질 수 있으므로 항상 다시 렌더
       render();
     }, 250);
@@ -827,11 +839,11 @@
   // ---------- CSV ----------
   function exportCsv() {
     var rows = [];
-    var header = ['No', '회원 이름', '양지번호'];
+    var header = ['No', '회원 이름', '평균금액'];
     state.dates.forEach(function (d) { header.push(fmtDateFull(d.iso)); });
     header.push('합계'); rows.push(header);
     state.members.forEach(function (m, i) {
-      var row = [i + 1, m.name || '', m.phone || ''];
+      var row = [i + 1, m.name || '', memberAverage(m.id)];
       state.dates.forEach(function (d) { row.push(state.cells[cellKey(m.id, d.id)] || 0); });
       row.push(memberTotal(m.id)); rows.push(row);
     });
@@ -1035,7 +1047,7 @@
 
   // ---------- 화면 문구(라벨) 수정 ----------
   function fillLabelInputs() {
-    var map = { 'lbl-title': 'title', 'lbl-lost': 'lost', 'lbl-name': 'colName', 'lbl-phone': 'colPhone', 'lbl-total': 'colTotal' };
+    var map = { 'lbl-title': 'title', 'lbl-lost': 'lost', 'lbl-name': 'colName', 'lbl-total': 'colTotal' };
     Object.keys(map).forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.value = lbl(map[id]);
@@ -1049,7 +1061,7 @@
       var get = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
       state.labels = mergeLabels({
         title: get('lbl-title'), lost: get('lbl-lost'),
-        colName: get('lbl-name'), colPhone: get('lbl-phone'), colTotal: get('lbl-total')
+        colName: get('lbl-name'), colTotal: get('lbl-total')
       });
       save(); fillLabelInputs(); render();
       alert('화면 문구를 저장했습니다.');

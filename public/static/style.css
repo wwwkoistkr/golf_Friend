@@ -277,6 +277,13 @@ html, body {
 }
 .name-input { font-weight: 700; }
 .phone-input { color: var(--muted); font-size: 13px; letter-spacing: .5px; }
+/* 평균금액 열: 자동계산 표시 셀(입력칸 아님) */
+.cell-avg {
+  padding: 10px 6px; text-align: right; font-size: 13px; font-weight: 700;
+  color: var(--green-dark); background: #f4faf6;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.sheet tbody tr:nth-child(even) .cell-avg { background: #edf6f0; }
 .money-input { text-align: right; padding-right: 10px; font-variant-numeric: tabular-nums; }
 .money-input.has-val { color: var(--red); font-weight: 700; }
 .cell-name input::placeholder, .cell-phone input::placeholder,
