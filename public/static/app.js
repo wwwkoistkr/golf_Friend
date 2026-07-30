@@ -34,7 +34,8 @@
           cells: d.cells || {},
           manager: d.manager || { name: '', phone: '' },
           widths: d.widths || {},
-          labels: mergeLabels(d.labels)   // 화면 문구(제목/라벨) — 관리자 수정 가능
+          labels: mergeLabels(d.labels),  // 화면 문구(제목/라벨) — 관리자 수정 가능
+          extra: normalizeExtra(d.extra)  // 지출액/잔액(합계 열 아래 2개 행)
           // assets(자료실 이미지)는 이제 서버(R2)에 저장 → localStorage에 두지 않음
         };
       }
@@ -42,8 +43,18 @@
     return {
       members: makeDefaultMembers(),
       dates: makeDefaultDates(),  // 골프 친 날짜 기본 3개(많아지면 접기)
-      cells: {}, manager: { name: '', phone: '' }, widths: {}, labels: mergeLabels(null)
+      cells: {}, manager: { name: '', phone: '' }, widths: {}, labels: mergeLabels(null),
+      extra: normalizeExtra(null)  // 지출액/잔액(합계 열 아래 2개 행)
     };
+  }
+  // 지출액/잔액 값을 항상 {expense, balance} 숫자 형태로 정규화
+  function normalizeExtra(saved) {
+    var out = { expense: 0, balance: 0 };
+    if (saved && typeof saved === 'object') {
+      out.expense = Number(saved.expense) || 0;
+      out.balance = Number(saved.balance) || 0;
+    }
+    return out;
   }
   // 화면에 쓰이는 문구 기본값 (관리자 모드에서 수정 가능)
   function defaultLabels() {
@@ -105,7 +116,8 @@
   function serializeState() {
     return {
       members: state.members, dates: state.dates, cells: state.cells,
-      manager: state.manager, widths: state.widths, labels: state.labels
+      manager: state.manager, widths: state.widths, labels: state.labels,
+      extra: state.extra || { expense: 0, balance: 0 }
     };
   }
 
@@ -155,6 +167,7 @@
     state.manager = d.manager || state.manager || { name: '', phone: '' };
     state.widths = d.widths || {};
     state.labels = mergeLabels(d.labels);
+    state.extra = normalizeExtra(d.extra);  // 지출액/잔액도 서버 값으로 동기화
     saveLocal();
     render();
     renderAdmin && renderAdmin();
@@ -373,6 +386,26 @@
     _vd.visible.forEach(function (d) { h += '<td class="foot-date" data-col="date:' + d.id + '" data-total-date="' + d.id + '"' + wStyle('date:' + d.id) + '>' + fmt(dateTotal(d.id)) + '</td>'; });
     h += '<td class="foot-grand">' + fmt(grandTotal()) + '</td>';
     h += '</tr>';
+
+    // ----- 추가 행: 지출액 / 잔액 -----
+    // 왼쪽(이름~날짜 열 전체)은 "지출액"/"잔액" 라벨, 맨 오른쪽 합계 열 아래에 금액 입력칸.
+    // 라벨 셀 colspan = 이름(2) + [접힘 1] + 보이는 날짜 수  → 합계 열 바로 왼쪽까지 채움.
+    var labelSpan = 2 + (_vd.hiddenCount > 0 ? 1 : 0) + _vd.visible.length;
+    var ex = (state.extra && state.extra.expense) || 0;
+    var bal = (state.extra && state.extra.balance) || 0;
+
+    h += '<tr class="foot-extra-row">';
+    h += '<td class="foot-no"></td>';
+    h += '<td class="foot-extra-label" colspan="' + labelSpan + '"><i class="fas fa-money-bill-wave"></i>지출액</td>';
+    h += '<td class="foot-extra-cell"><input type="text" inputmode="numeric" class="extra-input' + (ex ? ' has-val' : '') + '" data-extra="expense" value="' + (ex ? fmt(ex) : '') + '" placeholder="0" /></td>';
+    h += '</tr>';
+
+    h += '<tr class="foot-extra-row">';
+    h += '<td class="foot-no"></td>';
+    h += '<td class="foot-extra-label" colspan="' + labelSpan + '"><i class="fas fa-wallet"></i>잔액</td>';
+    h += '<td class="foot-extra-cell"><input type="text" inputmode="numeric" class="extra-input' + (bal ? ' has-val' : '') + '" data-extra="balance" value="' + (bal ? fmt(bal) : '') + '" placeholder="0" /></td>';
+    h += '</tr>';
+
     foot.innerHTML = h;
   }
 
@@ -421,6 +454,29 @@
       if (m2) { m2.phone = t.value; save(); }
     }
   });
+  // ----- 지출액 / 잔액 입력(합계 열 아래 2개 행) -----
+  foot.addEventListener('input', function (e) {
+    var t = e.target; if (!t.matches('.extra-input')) return;
+    var key = t.getAttribute('data-extra'); // 'expense' | 'balance'
+    if (key !== 'expense' && key !== 'balance') return;
+    var num = parseNum(t.value);
+    if (num < 0) num = 0;
+    if (!state.extra) state.extra = { expense: 0, balance: 0 };
+    state.extra[key] = num;
+    t.classList.toggle('has-val', !!num);
+    save();
+  });
+  // 포커스 시 콤마 제거(숫자만), blur 시 다시 콤마 표기
+  foot.addEventListener('focus', function (e) {
+    var t = e.target; if (!t.matches('.extra-input')) return;
+    var num = parseNum(t.value); t.value = num ? String(num) : '';
+    setTimeout(function () { try { t.select(); } catch (x) {} }, 0);
+  }, true);
+  foot.addEventListener('blur', function (e) {
+    var t = e.target; if (!t.matches('.extra-input')) return;
+    var num = parseNum(t.value); t.value = num ? fmt(num) : '';
+  }, true);
+
   body.addEventListener('focus', function (e) {
     var t = e.target; if (!t.matches('.money-input')) return;
     var num = parseNum(t.value); t.value = num ? String(num) : '';
@@ -699,6 +755,7 @@
       state.dates = makeDefaultDates();
       state.cells = {}; state.manager = { name: '', phone: '' }; state.widths = {};
       state.labels = defaultLabels();
+      state.extra = { expense: 0, balance: 0 };
       mgrName.value = ''; mgrPhone.value = '';
       collapseEnabled = true;
       save(); render();
@@ -719,6 +776,11 @@
     var footer = ['', '날짜별 합계', ''];
     state.dates.forEach(function (d) { footer.push(dateTotal(d.id)); });
     footer.push(grandTotal()); rows.push(footer);
+    // 지출액 / 잔액 (합계 열 위치에 값 기록, 날짜 칸은 빈값)
+    var ex = (state.extra && state.extra.expense) || 0;
+    var bal = (state.extra && state.extra.balance) || 0;
+    var expRow = ['', '지출액', '']; state.dates.forEach(function () { expRow.push(''); }); expRow.push(ex); rows.push(expRow);
+    var balRow = ['', '잔액', '']; state.dates.forEach(function () { balRow.push(''); }); balRow.push(bal); rows.push(balRow);
     var csv = rows.map(function (r) { return r.map(function (c) { var s = String(c == null ? '' : c); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(','); }).join('\n');
     var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     downloadBlob(blob, '골프페널티_' + todayIso() + '.csv');
