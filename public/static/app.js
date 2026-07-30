@@ -419,37 +419,30 @@
     h += '<td class="foot-grand">' + fmt(grandTotal()) + '</td>';
     h += '</tr>';
 
-    // ----- 추가 행: 지출액 / 잔액 (날짜별 합계와 같은 선상으로 표에 이어붙임) -----
-    // ★날짜별 합계 행과 "동일한 셀 구조"로 만들어 금액이 합계 열과 정확히 정렬되게 한다.
-    //  키패드 사라짐은 (1) 입력 중 서버저장 차단 (2) 입력 중 render 방어(pendingServerData)
-    //  (3) 입력 중 value/커서 안전조작 으로 해결(handlers 참고).
-    var ex = (state.extra && state.extra.expense) || 0;
-    var balance = grandTotal() - ex;  // 잔액 = 날짜별 합계(총합) - 지출액 (자동 계산)
-
-    function extraFillerCells() {
-      var f = '';
-      if (_vd.hiddenCount > 0) { f += '<td class="foot-extra-filler"></td>'; }
-      _vd.visible.forEach(function (d) { f += '<td class="foot-extra-filler" data-col="date:' + d.id + '"' + wStyle('date:' + d.id) + '></td>'; });
-      return f;
-    }
-
-    // 지출액: 누구나 입력·수정 가능(합계 열과 같은 sticky-right 위치)
-    h += '<tr class="foot-extra-row">';
-    h += '<td class="foot-no"></td>';
-    h += '<td class="foot-extra-label" colspan="2"><i class="fas fa-money-bill-wave"></i>지출액</td>';
-    h += extraFillerCells();
-    h += '<td class="foot-extra-cell"><input type="text" inputmode="numeric" pattern="[0-9]*" class="extra-input' + (ex ? ' has-val' : '') + '" data-extra="expense" value="' + (ex ? fmt(ex) : '') + '" placeholder="0" /></td>';
-    h += '</tr>';
-
-    // 잔액: 자동 계산 표시(입력 불가)
-    h += '<tr class="foot-extra-row foot-balance-row">';
-    h += '<td class="foot-no"></td>';
-    h += '<td class="foot-extra-label" colspan="2"><i class="fas fa-wallet"></i>잔액</td>';
-    h += extraFillerCells();
-    h += '<td class="foot-extra-cell foot-balance-cell' + (balance < 0 ? ' neg' : '') + '" data-balance>' + fmt(balance) + '</td>';
-    h += '</tr>';
-
     foot.innerHTML = h;
+
+    // ★지출액/잔액은 표(sticky) "밖" 별도 영역(#money-summary)에서 렌더한다.
+    //  → 모바일에서 sticky tfoot 셀 입력칸이 유발하던 키패드 사라짐/입력불가 문제를 근본 차단.
+    renderMoneySummary();
+  }
+
+  // ----- 지출액/잔액 요약 영역(표 밖) -----
+  //  ★모바일 키패드가 사라지던/입력이 안 되던 근본 원인이던 "sticky tfoot 셀 안의 입력칸"을 제거하고,
+  //   일반 블록 레이아웃의 넓은 입력칸으로 옮겼다. sticky 재계산/뷰포트 리사이즈 영향 없음.
+  function renderMoneySummary() {
+    var total = grandTotal();
+    var ex = (state.extra && state.extra.expense) || 0;
+    var balance = total - ex;
+    var elTotal = document.getElementById('ms-total');
+    var elBal = document.getElementById('ms-balance');
+    var input = document.getElementById('ms-expense-input');
+    if (elTotal) elTotal.textContent = fmt(total);
+    if (elBal) { elBal.textContent = fmt(balance); elBal.classList.toggle('neg', balance < 0); }
+    // 입력칸은 사용자가 타이핑 중이면 값을 덮어쓰지 않는다(포커스 유지).
+    if (input && document.activeElement !== input) {
+      input.value = ex ? fmt(ex) : '';
+      input.classList.toggle('has-val', !!ex);
+    }
   }
 
   function applyWidths() {
@@ -474,8 +467,8 @@
     state.members.forEach(function (m) { var av = body.querySelector('[data-avg-member="' + m.id + '"]'); if (av) av.textContent = fmt(memberAverage(m.id)); });
     state.dates.forEach(function (d) { var el = foot.querySelector('[data-total-date="' + d.id + '"]'); if (el) el.textContent = fmt(dateTotal(d.id)); });
     var g = foot.querySelector('.foot-grand'); if (g) g.textContent = fmt(grandTotal());
-    // 날짜별 합계가 바뀌면 잔액(=합계-지출액)도 갱신
-    refreshBalance();
+    // 날짜별 합계가 바뀌면 표 밖 요약(합계/잔액)도 갱신
+    renderMoneySummary();
   }
 
   function findMember(id) { for (var i = 0; i < state.members.length; i++) if (state.members[i].id === id) return state.members[i]; return null; }
@@ -498,9 +491,9 @@
       if (m1) { m1.name = t.value; save(); }
     }
   });
-  // 잔액(자동 계산: 날짜별 합계 - 지출액)을 실시간 갱신 (표 안 tfoot 셀)
+  // 잔액(자동 계산: 날짜별 합계 - 지출액)을 실시간 갱신 (표 밖 요약 영역)
   function refreshBalance() {
-    var el = foot.querySelector('[data-balance]');
+    var el = document.getElementById('ms-balance');
     if (!el) return;
     var ex = (state.extra && state.extra.expense) || 0;
     var balance = grandTotal() - ex;
@@ -508,46 +501,46 @@
     el.classList.toggle('neg', balance < 0);
   }
   // ============================================================
-  //  지출액 입력 (표 안 합계열 아래 .extra-input) — 누구나 입력·수정 가능
-  //  ★★모바일 키패드 사라짐 방지 (표에 이어붙인 상태에서도 안정) ★★
-  //   입력칸은 render 때마다 새로 생성되므로, 특정 엘리먼트가 아니라 foot(tfoot)에
-  //   "이벤트 위임"으로 바인딩한다(엘리먼트가 파괴돼도 리스너가 살아있음).
-  //   1) 입력 중에는 서버 저장을 걸지 않음 → 409/applyServerData→render 연쇄 없음(DOM 안 갈아엎음)
-  //   2) 입력 중 render 는 pendingServerData 로 미룸(isEditing 방어) → 입력칸 파괴 안 됨
-  //   3) 실시간 천단위 콤마 + 커서 보정
-  foot.addEventListener('focus', function (e) {
-    var t = e.target; if (!t.matches('.extra-input')) return;
-    setTimeout(function () { try { t.select(); } catch (x) {} }, 0);
-  }, true);
-  foot.addEventListener('input', function (e) {
-    var t = e.target; if (!t.matches('.extra-input')) return;
-    var num = parseNum(t.value); // 콤마·비숫자 무시, 숫자만
-    if (num < 0) num = 0;
-    if (!state.extra) state.extra = { expense: 0, balance: 0 };
-    state.extra.expense = num;
-    t.classList.toggle('has-val', !!num);
-    // ── 입력 중 실시간 천단위 콤마 + 커서 보정 ──
-    var before = t.value;
-    var caret = t.selectionStart == null ? before.length : t.selectionStart;
-    var digitsBeforeCaret = before.slice(0, caret).replace(/[^\d]/g, '').length;
-    var formatted = num ? fmt(num) : '';
-    t.value = formatted;
-    var pos = 0, seen = 0;
-    while (pos < formatted.length && seen < digitsBeforeCaret) {
-      if (/\d/.test(formatted[pos])) seen++;
-      pos++;
-    }
-    try { t.setSelectionRange(pos, pos); } catch (x) {}
-    refreshBalance();      // 잔액 즉시 갱신
-    saveLocal();           // 로컬에만 즉시 저장 (서버 저장은 blur 때)
-  });
-  foot.addEventListener('blur', function (e) {
-    var t = e.target; if (!t.matches('.extra-input')) return;
-    var num = parseNum(t.value);
-    t.value = num ? fmt(num) : '';            // 콤마 표기 정리
-    scheduleServerSave();                     // 입력 완료 후에만 서버 저장
-    setTimeout(flushPendingServerData, 50);   // 미뤄둔 서버 데이터 반영
-  }, true);
+  //  지출액 입력 (표 밖 별도 영역 #ms-expense-input) — 누구나 입력·수정 가능
+  //  ★★모바일 키패드 사라짐/입력불가 근본 해결 ★★
+  //   1) sticky tfoot 셀에서 일반 블록 입력칸으로 이동 → 뷰포트 리사이즈/sticky 재계산 영향 없음
+  //   2) 입력 중에는 서버 저장을 걸지 않음 → 409/applyServerData→render 연쇄가 없어 DOM 안 갈아엎음
+  //      (로컬 저장만 즉시, 서버 저장은 blur 때 딱 1회)
+  //   3) 입력 중 실시간 천단위 콤마 + 커서 보정
+  var msInput = document.getElementById('ms-expense-input');
+  if (msInput) {
+    // 포커스 시: 기존 값 전체 선택(콤마는 그대로 둠 → 실시간 콤마 포맷이 처리).
+    msInput.addEventListener('focus', function () {
+      setTimeout(function () { try { msInput.select(); } catch (x) {} }, 0);
+    });
+    msInput.addEventListener('input', function () {
+      var num = parseNum(msInput.value); // 콤마·비숫자 무시, 숫자만
+      if (num < 0) num = 0;
+      if (!state.extra) state.extra = { expense: 0, balance: 0 };
+      state.extra.expense = num;
+      msInput.classList.toggle('has-val', !!num);
+      // ── 입력 중에도 천단위 콤마를 실시간으로 찍는다(커서 보정) ──
+      var before = msInput.value;
+      var caret = msInput.selectionStart == null ? before.length : msInput.selectionStart;
+      var digitsBeforeCaret = before.slice(0, caret).replace(/[^\d]/g, '').length;
+      var formatted = num ? fmt(num) : '';
+      msInput.value = formatted;
+      var pos = 0, seen = 0;
+      while (pos < formatted.length && seen < digitsBeforeCaret) {
+        if (/\d/.test(formatted[pos])) seen++;
+        pos++;
+      }
+      try { msInput.setSelectionRange(pos, pos); } catch (x) {}
+      refreshBalance();      // 잔액 즉시 갱신
+      saveLocal();           // 로컬에만 즉시 저장 (서버 저장은 blur 때)
+    });
+    msInput.addEventListener('blur', function () {
+      var num = parseNum(msInput.value);
+      msInput.value = num ? fmt(num) : '';      // 콤마 표기 정리
+      scheduleServerSave();                     // 입력 완료 후에만 서버 저장
+      setTimeout(flushPendingServerData, 50);   // 미뤄둔 서버 데이터 반영
+    });
+  }
 
   body.addEventListener('focus', function (e) {
     var t = e.target; if (!t.matches('.money-input')) return;
