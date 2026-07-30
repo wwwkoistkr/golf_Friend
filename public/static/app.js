@@ -495,11 +495,9 @@
   //      (로컬 저장만 즉시, 서버 저장은 blur 때 딱 1회)
   var msInput = document.getElementById('ms-expense-input');
   if (msInput) {
-    // 포커스 시: 콤마를 제거한 숫자만 남기고 전체 선택 → 이어치기 시 콤마가 끼는 문제 방지.
-    //  (표 밖 일반 입력칸이라 sticky/뷰포트 영향이 없어 안드로이드 키패드가 닫히지 않음)
+    // 포커스 시: 기존 값 전체 선택(콤마는 그대로 둠 → 실시간 콤마 포맷이 처리).
+    //  전체 선택 상태이므로 새 숫자를 치면 자연스럽게 덮어써진다.
     msInput.addEventListener('focus', function () {
-      var num = parseNum(msInput.value);
-      msInput.value = num ? String(num) : '';
       setTimeout(function () { try { msInput.select(); } catch (x) {} }, 0);
     });
     msInput.addEventListener('input', function () {
@@ -508,7 +506,22 @@
       if (!state.extra) state.extra = { expense: 0, balance: 0 };
       state.extra.expense = num;
       msInput.classList.toggle('has-val', !!num);
-      refreshBalance();      // 잔액만 즉시 갱신(입력칸은 건드리지 않음)
+      // ── 입력 중에도 천단위 콤마를 실시간으로 찍는다 ──
+      //  표 밖 일반 입력칸이라 값 재작성이 sticky/뷰포트에 영향을 안 줘서 키패드가 닫히지 않음.
+      //  콤마가 새로 생기거나 사라지는 만큼 커서 위치를 보정한다.
+      var before = msInput.value;
+      var caret = msInput.selectionStart == null ? before.length : msInput.selectionStart;
+      var digitsBeforeCaret = before.slice(0, caret).replace(/[^\d]/g, '').length; // 커서 앞 숫자 개수
+      var formatted = num ? fmt(num) : '';
+      msInput.value = formatted;
+      // 포맷된 문자열에서 "숫자 digitsBeforeCaret개" 지난 위치로 커서 복원
+      var pos = 0, seen = 0;
+      while (pos < formatted.length && seen < digitsBeforeCaret) {
+        if (/\d/.test(formatted[pos])) seen++;
+        pos++;
+      }
+      try { msInput.setSelectionRange(pos, pos); } catch (x) {}
+      refreshBalance();      // 잔액 즉시 갱신
       saveLocal();           // 로컬에만 즉시 저장 (서버 저장은 blur 때)
     });
     msInput.addEventListener('blur', function () {

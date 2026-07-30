@@ -351,42 +351,43 @@ html, body {
 
 /* ===== 지출액 / 잔액 요약 (표 sticky 밖 별도 영역 — 모바일 키패드 안정) ===== */
 .money-summary {
-  max-width: 460px;
-  margin: 14px auto 4px;
+  max-width: 380px;
+  margin: 10px auto 4px;
   background: #fff;
   border: 1px solid #d8e6dc;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(21, 115, 71, .08);
+  border-radius: 10px;
+  box-shadow: 0 1px 5px rgba(21, 115, 71, .07);
   overflow: hidden;
 }
 .ms-row {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 6px 14px;
+  min-height: 38px;
   border-bottom: 1px solid #eef3ef;
 }
 .ms-row:last-child { border-bottom: none; }
 .ms-label {
-  display: inline-flex; align-items: center; gap: 7px;
-  font-size: 15px; font-weight: 700; color: var(--green-dark);
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 700; color: var(--green-dark);
   white-space: nowrap;
 }
-.ms-label i { color: var(--green); }
+.ms-label i { color: var(--green); font-size: 13px; }
 .ms-value {
-  font-size: 17px; font-weight: 800; color: var(--green-dark);
+  font-size: 16px; font-weight: 800; color: var(--green-dark);
   text-align: right;
 }
 .ms-value.neg { color: #c0392b; }
 
-/* 지출액 입력칸: 넓고 탭하기 쉬운 일반 블록 입력 (sticky 아님) */
+/* 지출액 입력칸: 탭하기 쉬운 일반 블록 입력 (sticky 아님), 콤팩트 높이 */
 .ms-row.ms-expense { background: #fffef4; }
 .ms-input {
-  flex: 1 1 auto; min-width: 0; max-width: 200px;
+  flex: 0 1 150px; min-width: 0; max-width: 170px;
   box-sizing: border-box;
-  border: 1.5px solid #e2c987; border-radius: 8px;
+  border: 1.5px solid #e2c987; border-radius: 7px;
   background: #fff;
-  padding: 12px 12px; text-align: right;
-  font-size: 17px; font-weight: 800; color: var(--green-dark);
+  padding: 6px 10px; text-align: right;
+  font-size: 16px; font-weight: 800; color: var(--green-dark);
   outline: none;
   -webkit-appearance: none; appearance: none;
 }
@@ -395,15 +396,11 @@ html, body {
 
 /* 잔액 강조 행 */
 .ms-row.ms-balance { background: var(--green-soft); }
-.ms-row.ms-balance .ms-value { font-size: 19px; }
+.ms-row.ms-balance .ms-value { font-size: 17px; }
 
 @media (max-width: 640px) {
-  .money-summary { margin: 12px 6px 4px; }
-  .ms-row { padding: 11px 13px; }
-  .ms-label { font-size: 14px; }
-  .ms-value { font-size: 16px; }
-  .ms-row.ms-balance .ms-value { font-size: 18px; }
-  .ms-input { font-size: 16px; padding: 12px 10px; }
+  .money-summary { max-width: none; margin: 10px 6px 4px; }
+  .ms-row { padding: 6px 12px; min-height: 36px; }
 }
 
 /* ===== Admin panel ===== */
