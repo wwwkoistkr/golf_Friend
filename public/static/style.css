@@ -304,24 +304,29 @@ html, body {
 /* 날짜가 많아 화면을 넘어가면 가운데 오래된 날짜를 이 한 열로 접어서 표시.
    눌러서 전체 펼치기 가능. 폭은 좁게. */
 .col-fold, .cell-fold, .foot-fold {
-  width: 34px; min-width: 34px; max-width: 34px;
+  width: 22px; min-width: 22px; max-width: 22px;
   cursor: pointer;
-  padding: 0 2px !important;
+  padding: 0 !important;
+  /* ★좁은 요약 열: 내용이 절대 옆 칸(평균금액)으로 넘치지 않게 함 (겹침 방지) */
+  overflow: hidden; white-space: nowrap;
+  text-align: center; vertical-align: middle;
+  border-left: 2px solid #cfe3d7; border-right: 2px solid #cfe3d7;
 }
 .sheet thead th.col-fold {
   background: #0f5132; color: #ffe082;
 }
 .fold-head { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
-.fold-dots { font-size: 15px; font-weight: 900; letter-spacing: 1px; }
-.fold-cnt { font-size: 9px; opacity: .9; }
+.fold-dots { font-size: 13px; font-weight: 900; letter-spacing: 0; }
+.fold-cnt { font-size: 8px; opacity: .9; white-space: nowrap; }
 .cell-fold {
-  background: #f1faf4; color: #6b8f7c;
-  text-align: right; font-size: 11px; font-weight: 700;
-  border-left: 1px dashed #b5d8c4; border-right: 1px dashed #b5d8c4;
+  background: #eef6f1; color: #6b8f7c;
+  text-align: center; font-size: 11px; font-weight: 700;
 }
-.sheet tbody tr:nth-child(even) .cell-fold { background: #e7f3ec; }
-.foot-fold { background: #dbeee2; color: var(--green-dark); font-size: 11px; }
-.col-fold:hover, .cell-fold:hover { filter: brightness(.97); }
+/* 접힌 날짜에 값이 있으면 점 하나만 표시(실제 합계는 툴팁) */
+.fold-dot { display: inline-block; color: var(--green); font-weight: 900; font-size: 18px; line-height: 1; }
+.sheet tbody tr:nth-child(even) .cell-fold { background: #e2f0e8; }
+.foot-fold { background: #dbeee2; color: var(--green-dark); font-size: 11px; text-align: center; }
+.col-fold:hover, .cell-fold:hover, .foot-fold:hover { filter: brightness(.96); }
 
 /* --- Total column (right) --- */
 .cell-total {

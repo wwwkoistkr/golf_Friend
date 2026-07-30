@@ -391,10 +391,11 @@
       h += '<td class="cell-name" data-col="name"' + wStyle('name') + '><input type="text" maxlength="6" class="' + inputCls('name-input', !!m.name) + '" data-name="' + m.id + '" value="' + escapeHtml(m.name) + '" placeholder="이름6자" /></td>';
       // 평균금액: 자동계산 표시(입력 불가). 회원별 평균금액 = 합계 ÷ 입력한 날짜수(반올림)
       h += '<td class="cell-phone cell-avg" data-col="phone"' + wStyle('phone') + ' data-avg-member="' + m.id + '">' + fmt(memberAverage(m.id)) + '</td>';
-      // 접힌 날짜: 각 회원의 접힌 부분 합계를 요약 셀로 표시
+      // 접힌 날짜: 좁은 요약 열이라 금액을 그대로 쓰면 옆(평균금액) 칸으로 넘쳐 겹친다.
+      //  → 셀에는 점(…)만 두고 실제 합계는 title 툴팁으로만 제공(누르면 전체 펼침).
       if (_vd.hiddenCount > 0) {
         var hSum = hiddenMemberTotal(m.id, _vd.hiddenIds);
-        h += '<td class="cell-fold" title="숨겨진 날짜 합계">' + (hSum ? fmt(hSum) : '') + '</td>';
+        h += '<td class="cell-fold" title="숨겨진 날짜 합계 ' + fmt(hSum) + ' · 눌러서 펼치기">' + (hSum ? '<span class="fold-dot">·</span>' : '') + '</td>';
       }
       _vd.visible.forEach(function (d) {
         var val = state.cells[cellKey(m.id, d.id)];
@@ -413,7 +414,7 @@
     h += '<td class="foot-label" colspan="2"><i class="fas fa-calculator"></i>날짜별 합계</td>';
     if (_vd.hiddenCount > 0) {
       var hg = hiddenGrandTotal(_vd.hiddenIds);
-      h += '<td class="foot-fold" title="숨겨진 날짜 합계">' + (hg ? fmt(hg) : '') + '</td>';
+      h += '<td class="foot-fold" title="숨겨진 날짜 합계 ' + fmt(hg) + ' · 눌러서 펼치기">' + (hg ? '<span class="fold-dot">·</span>' : '') + '</td>';
     }
     _vd.visible.forEach(function (d) { h += '<td class="foot-date" data-col="date:' + d.id + '" data-total-date="' + d.id + '"' + wStyle('date:' + d.id) + '>' + fmt(dateTotal(d.id)) + '</td>'; });
     h += '<td class="foot-grand">' + fmt(grandTotal()) + '</td>';
