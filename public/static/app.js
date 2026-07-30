@@ -474,28 +474,37 @@
     el.classList.toggle('neg', balance < 0);
   }
   // ----- 지출액 입력(합계 열 아래): 누구나 입력·수정 가능 -----
+  // ★모바일(iOS Safari 등) 대응: focus 시점에 value를 즉시 바꾸면 소프트키보드에서
+  //   입력이 막히는 문제가 있어, 입력 중에는 값을 건드리지 않고 숫자만 걸러낸다.
+  //   콤마 표기는 blur(입력 완료) 시에만 적용한다.
   foot.addEventListener('input', function (e) {
     var t = e.target; if (!t.matches('.extra-input')) return;
     var key = t.getAttribute('data-extra'); // 'expense'만 입력 가능
     if (key !== 'expense') return;
-    var num = parseNum(t.value);
+    // ★실시간 콤마 재포맷 + 커서 위치 보정(모바일/PC 모두 안정적으로 편집 가능)
+    var digits = (t.value || '').replace(/[^0-9]/g, '');
+    // 커서 앞쪽 숫자 개수를 세어, 재포맷 후 같은 자리로 커서를 되돌린다
+    var caret = t.selectionStart;
+    var digitsBeforeCaret = (t.value.slice(0, caret).replace(/[^0-9]/g, '')).length;
+    var num = digits ? parseInt(digits, 10) : 0;
     if (num < 0) num = 0;
+    var formatted = num ? fmt(num) : '';
+    t.value = formatted;
+    // 커서를 digitsBeforeCaret 번째 숫자 뒤로 재배치
+    if (document.activeElement === t) {
+      var pos = 0, seen = 0;
+      while (pos < formatted.length && seen < digitsBeforeCaret) {
+        if (/[0-9]/.test(formatted[pos])) seen++;
+        pos++;
+      }
+      try { t.setSelectionRange(pos, pos); } catch (x) {}
+    }
     if (!state.extra) state.extra = { expense: 0, balance: 0 };
     state.extra[key] = num;
     t.classList.toggle('has-val', !!num);
     refreshBalance(); // 지출액이 바뀌면 잔액 즉시 재계산
     save();
   });
-  // 포커스 시 콤마 제거(숫자만), blur 시 다시 콤마 표기
-  foot.addEventListener('focus', function (e) {
-    var t = e.target; if (!t.matches('.extra-input')) return;
-    var num = parseNum(t.value); t.value = num ? String(num) : '';
-    setTimeout(function () { try { t.select(); } catch (x) {} }, 0);
-  }, true);
-  foot.addEventListener('blur', function (e) {
-    var t = e.target; if (!t.matches('.extra-input')) return;
-    var num = parseNum(t.value); t.value = num ? fmt(num) : '';
-  }, true);
 
   body.addEventListener('focus', function (e) {
     var t = e.target; if (!t.matches('.money-input')) return;
