@@ -388,23 +388,32 @@
     h += '</tr>';
 
     // ----- 추가 행: 지출액 / 잔액 -----
-    // 왼쪽(이름~날짜 열 전체)은 "지출액"/"잔액" 라벨, 맨 오른쪽 합계 열 아래에 금액 입력칸.
-    // 라벨 셀 colspan = 이름(2) + [접힘 1] + 보이는 날짜 수  → 합계 열 바로 왼쪽까지 채움.
-    var labelSpan = 2 + (_vd.hiddenCount > 0 ? 1 : 0) + _vd.visible.length;
+    // ★날짜별 합계 행과 "완전히 동일한 셀 구조"로 만들어야 합계 열과 정확히 정렬된다.
+    //  구조: foot-no + foot-extra-label(colspan=2) + [foot-fold 빈칸] + 날짜별 빈칸 × N + 금액셀(합계열 위치, sticky-right)
     var ex = (state.extra && state.extra.expense) || 0;
     var balance = grandTotal() - ex;  // 잔액 = 날짜별 합계(총합) - 지출액 (자동 계산)
 
-    // 지출액: 누구나 입력·수정 가능한 금액 입력칸
+    // 공통: 라벨 뒤 ~ 합계열 앞까지의 빈 셀들을 만든다(날짜별 합계 행과 열 개수 일치)
+    function extraFillerCells() {
+      var f = '';
+      if (_vd.hiddenCount > 0) { f += '<td class="foot-extra-filler"></td>'; }
+      _vd.visible.forEach(function (d) { f += '<td class="foot-extra-filler" data-col="date:' + d.id + '"' + wStyle('date:' + d.id) + '></td>'; });
+      return f;
+    }
+
+    // 지출액: 누구나 입력·수정 가능한 금액 입력칸(합계 열과 같은 sticky-right 위치)
     h += '<tr class="foot-extra-row">';
     h += '<td class="foot-no"></td>';
-    h += '<td class="foot-extra-label" colspan="' + labelSpan + '"><i class="fas fa-money-bill-wave"></i>지출액</td>';
-    h += '<td class="foot-extra-cell"><input type="text" inputmode="numeric" class="extra-input' + (ex ? ' has-val' : '') + '" data-extra="expense" value="' + (ex ? fmt(ex) : '') + '" placeholder="0" /></td>';
+    h += '<td class="foot-extra-label" colspan="2"><i class="fas fa-money-bill-wave"></i>지출액</td>';
+    h += extraFillerCells();
+    h += '<td class="foot-extra-cell"><input type="text" inputmode="numeric" pattern="[0-9]*" class="extra-input' + (ex ? ' has-val' : '') + '" data-extra="expense" value="' + (ex ? fmt(ex) : '') + '" placeholder="0" /></td>';
     h += '</tr>';
 
     // 잔액: 날짜별 합계 - 지출액 자동 계산(입력 불가, 표시만)
     h += '<tr class="foot-extra-row foot-balance-row">';
     h += '<td class="foot-no"></td>';
-    h += '<td class="foot-extra-label" colspan="' + labelSpan + '"><i class="fas fa-wallet"></i>잔액</td>';
+    h += '<td class="foot-extra-label" colspan="2"><i class="fas fa-wallet"></i>잔액</td>';
+    h += extraFillerCells();
     h += '<td class="foot-extra-cell foot-balance-cell' + (balance < 0 ? ' neg' : '') + '" data-balance>' + fmt(balance) + '</td>';
     h += '</tr>';
 
@@ -474,37 +483,37 @@
     el.classList.toggle('neg', balance < 0);
   }
   // ----- 지출액 입력(합계 열 아래): 누구나 입력·수정 가능 -----
-  // ★모바일(iOS Safari 등) 대응: focus 시점에 value를 즉시 바꾸면 소프트키보드에서
-  //   입력이 막히는 문제가 있어, 입력 중에는 값을 건드리지 않고 숫자만 걸러낸다.
-  //   콤마 표기는 blur(입력 완료) 시에만 적용한다.
+  // ★★모바일 키패드가 사라지던 근본 원인 제거 ★★
+  //  이전에는 매 입력마다 t.value 재작성 + setSelectionRange 를 호출했는데,
+  //  이 조작이 iOS/안드로이드 소프트키보드의 입력 세션(composition)을 끊어
+  //  키패드가 떴다가 바로 사라지는 증상을 유발했다.
+  //  → 입력 중에는 t.value / 커서를 절대 건드리지 않고, 값 저장만 한다.
+  //    콤마 표기는 입력이 끝난 blur 시점에만 적용한다.
   foot.addEventListener('input', function (e) {
     var t = e.target; if (!t.matches('.extra-input')) return;
     var key = t.getAttribute('data-extra'); // 'expense'만 입력 가능
     if (key !== 'expense') return;
-    // ★실시간 콤마 재포맷 + 커서 위치 보정(모바일/PC 모두 안정적으로 편집 가능)
-    var digits = (t.value || '').replace(/[^0-9]/g, '');
-    // 커서 앞쪽 숫자 개수를 세어, 재포맷 후 같은 자리로 커서를 되돌린다
-    var caret = t.selectionStart;
-    var digitsBeforeCaret = (t.value.slice(0, caret).replace(/[^0-9]/g, '')).length;
-    var num = digits ? parseInt(digits, 10) : 0;
+    var num = parseNum(t.value); // 콤마·비숫자 문자는 무시하고 숫자만 추출
     if (num < 0) num = 0;
-    var formatted = num ? fmt(num) : '';
-    t.value = formatted;
-    // 커서를 digitsBeforeCaret 번째 숫자 뒤로 재배치
-    if (document.activeElement === t) {
-      var pos = 0, seen = 0;
-      while (pos < formatted.length && seen < digitsBeforeCaret) {
-        if (/[0-9]/.test(formatted[pos])) seen++;
-        pos++;
-      }
-      try { t.setSelectionRange(pos, pos); } catch (x) {}
-    }
     if (!state.extra) state.extra = { expense: 0, balance: 0 };
     state.extra[key] = num;
     t.classList.toggle('has-val', !!num);
     refreshBalance(); // 지출액이 바뀌면 잔액 즉시 재계산
     save();
   });
+  // 포커스(입력 시작): 콤마를 제거해 순수 숫자로 편집하기 쉽게 — 값 자체는 그대로라 키패드에 영향 없음
+  foot.addEventListener('focus', function (e) {
+    var t = e.target; if (!t.matches('.extra-input')) return;
+    var num = parseNum(t.value);
+    var plain = num ? String(num) : '';
+    if (t.value !== plain) t.value = plain; // 값이 다를 때만 1회 변경(입력 시작 전이라 안전)
+  }, true);
+  // blur(입력 완료): 콤마 표기로 정리
+  foot.addEventListener('blur', function (e) {
+    var t = e.target; if (!t.matches('.extra-input')) return;
+    var num = parseNum(t.value);
+    t.value = num ? fmt(num) : '';
+  }, true);
 
   body.addEventListener('focus', function (e) {
     var t = e.target; if (!t.matches('.money-input')) return;
