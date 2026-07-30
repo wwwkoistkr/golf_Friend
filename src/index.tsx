@@ -184,7 +184,7 @@ app.get('/', (c) => {
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛳</text></svg>">
   <title>골프등급표</title>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="/static/style.css?v=20260729d" rel="stylesheet">
+  <link href="/static/style.css?v=20260730b" rel="stylesheet">
 </head>
 <body>
   <header class="app-header" id="app-header">
@@ -195,7 +195,7 @@ app.get('/', (c) => {
         <button id="btn-add-date" class="btn btn-light"><i class="fas fa-calendar-plus"></i><span class="btn-text"> 날짜추가</span></button>
         <input type="date" id="date-picker" class="date-picker-hidden" aria-label="골프 친 날짜 선택" />
         <button id="btn-export" class="btn btn-light"><i class="fas fa-file-csv"></i><span class="btn-text"> 엑셀저장</span></button>
-        <button id="btn-clear" class="btn btn-light"><i class="fas fa-rotate-left"></i><span class="btn-text"> 초기화</span></button>
+        <button id="btn-clear" class="btn btn-light"><i class="fas fa-up-right-and-down-left-from-center"></i><span class="btn-text btn-text-sm"> 날짜펼치기</span></button>
         <button id="btn-admin" class="btn btn-gold"><i class="fas fa-user-shield"></i><span class="btn-text"> 관리자</span></button>
       </div>
     </div>
@@ -203,7 +203,7 @@ app.get('/', (c) => {
 
   <main class="app-main" id="view-sheet">
     <div id="mode-banner" class="mode-banner mode-user">
-      <i class="fas fa-pen"></i> 일반 사용자 모드 · 모든 칸을 <b>자유롭게 입력·수정</b>할 수 있습니다 (회원·날짜 삭제, 자료실은 관리자)
+      <i class="fas fa-pen"></i><span class="mode-banner-text">일반 사용자 모드 · 모든 칸을 <b>자유롭게 입력·수정</b>할 수 있습니다 (회원·날짜 삭제, 자료실은 관리자)</span>
     </div>
     <div class="table-wrap" id="table-wrap">
       <table id="sheet" class="sheet">
@@ -321,7 +321,7 @@ app.get('/', (c) => {
     </div>
   </div>
 
-  <script src="/static/app.js?v=20260729d"></script>
+  <script src="/static/app.js?v=20260730b"></script>
 </body>
 </html>`)
 })

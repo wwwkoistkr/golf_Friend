@@ -120,6 +120,9 @@ html, body {
 .mode-banner.mode-admin { background: #fff3e0; color: #e65100; border: 1px solid #ffb74d; }
 .mode-banner.mode-expand { background: #fff8e1; color: #b26a00; border: 1px solid #ffcc66; }
 .mode-banner b { font-weight: 800; }
+/* 아이콘을 제외한 안내 문구 전체를 하나의 흐름으로 묶어 단어가 자연스럽게 줄바꿈되게 함 */
+.mode-banner-text { flex: 1 1 auto; min-width: 0; }
+.mode-banner-text b { white-space: nowrap; }
 .banner-btn {
   margin-left: auto; border: 1px solid currentColor; background: transparent;
   color: inherit; font-weight: 700; font-size: 12px; padding: 3px 10px;
@@ -531,6 +534,14 @@ html, body {
     display: inline; font-size: 10.5px; margin-left: 1px;
   }
   .header-actions .btn i { margin: 0; font-size: 11px; }
+  /* '날짜펼치기'처럼 글자가 긴 버튼은 글씨를 더 작게 하여 5개 버튼 균형 유지 */
+  .header-actions .btn .btn-text-sm { font-size: 9px; letter-spacing: -0.3px; }
+  /* 상단 안내 메시지: 모바일에서도 PC처럼 자연스럽게 한 문장으로 보이게(글씨만 줄임) */
+  .mode-banner {
+    font-size: 11px; padding: 7px 10px; line-height: 1.35;
+    align-items: flex-start; gap: 6px;
+  }
+  .mode-banner i { margin-top: 1px; }
   /* 모바일에서는 컬럼 드래그 리사이즈 핸들을 숨긴다(불안정 방지, 고정폭 유지) */
   .col-resize { display: none !important; }
   .table-wrap { max-height: calc(100vh - 120px); }

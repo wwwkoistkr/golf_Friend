@@ -668,7 +668,7 @@
     var left = sec;
     function paint() {
       banner.className = 'mode-banner mode-expand';
-      banner.innerHTML = '<i class="fas fa-eye"></i> 전체 날짜를 펼쳐 보는 중 · <b>' + left + '초</b> 후 자동으로 접힙니다 · <button id="collapse-now" class="banner-btn">지금 접기</button>';
+      banner.innerHTML = '<i class="fas fa-eye"></i><span class="mode-banner-text">전체 날짜를 펼쳐 보는 중 · <b>' + left + '초</b> 후 자동으로 접힙니다 · <button id="collapse-now" class="banner-btn">지금 접기</button></span>';
     }
     paint();
     if (noticeTimer) clearInterval(noticeTimer);
@@ -786,10 +786,10 @@
     if (banner) {
       if (isAdmin) {
         banner.className = 'mode-banner mode-admin';
-        banner.innerHTML = '<i class="fas fa-lock-open"></i> 관리자 모드 · 모든 값을 <b>수정·삭제</b>할 수 있습니다';
+        banner.innerHTML = '<i class="fas fa-lock-open"></i><span class="mode-banner-text">관리자 모드 · 모든 값을 <b>수정·삭제</b>할 수 있습니다</span>';
       } else {
         banner.className = 'mode-banner mode-user';
-        banner.innerHTML = '<i class="fas fa-pen"></i> 일반 사용자 모드 · 모든 칸을 <b>자유롭게 입력·수정</b>할 수 있습니다 (회원·날짜 삭제, 자료실은 관리자)';
+        banner.innerHTML = '<i class="fas fa-pen"></i><span class="mode-banner-text">일반 사용자 모드 · 모든 칸을 <b>자유롭게 입력·수정</b>할 수 있습니다 (회원·날짜 삭제, 자료실은 관리자)</span>';
       }
     }
   }
