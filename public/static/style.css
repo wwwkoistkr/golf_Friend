@@ -370,6 +370,14 @@ html, body {
 }
 .sheet tfoot td.foot-extra-cell .extra-input::placeholder { color: #b0b0b0; font-weight: 600; }
 .sheet tfoot td.foot-extra-cell .extra-input.has-val { color: var(--green-dark); }
+/* 잔액: 자동 계산 표시 셀(입력 불가) */
+.sheet tfoot td.foot-balance-cell {
+  padding: 10px 6px; text-align: right;
+  font-size: 15px; font-weight: 800; color: var(--green-dark);
+  background: var(--green-soft);
+  border-left: 2px solid var(--gold);
+}
+.sheet tfoot td.foot-balance-cell.neg { color: #c0392b; }
 
 /* ===== Admin panel ===== */
 .admin-panel { max-width: 900px; margin: 0 auto; }

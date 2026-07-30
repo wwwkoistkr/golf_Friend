@@ -392,18 +392,20 @@
     // 라벨 셀 colspan = 이름(2) + [접힘 1] + 보이는 날짜 수  → 합계 열 바로 왼쪽까지 채움.
     var labelSpan = 2 + (_vd.hiddenCount > 0 ? 1 : 0) + _vd.visible.length;
     var ex = (state.extra && state.extra.expense) || 0;
-    var bal = (state.extra && state.extra.balance) || 0;
+    var balance = grandTotal() - ex;  // 잔액 = 날짜별 합계(총합) - 지출액 (자동 계산)
 
+    // 지출액: 누구나 입력·수정 가능한 금액 입력칸
     h += '<tr class="foot-extra-row">';
     h += '<td class="foot-no"></td>';
     h += '<td class="foot-extra-label" colspan="' + labelSpan + '"><i class="fas fa-money-bill-wave"></i>지출액</td>';
     h += '<td class="foot-extra-cell"><input type="text" inputmode="numeric" class="extra-input' + (ex ? ' has-val' : '') + '" data-extra="expense" value="' + (ex ? fmt(ex) : '') + '" placeholder="0" /></td>';
     h += '</tr>';
 
-    h += '<tr class="foot-extra-row">';
+    // 잔액: 날짜별 합계 - 지출액 자동 계산(입력 불가, 표시만)
+    h += '<tr class="foot-extra-row foot-balance-row">';
     h += '<td class="foot-no"></td>';
     h += '<td class="foot-extra-label" colspan="' + labelSpan + '"><i class="fas fa-wallet"></i>잔액</td>';
-    h += '<td class="foot-extra-cell"><input type="text" inputmode="numeric" class="extra-input' + (bal ? ' has-val' : '') + '" data-extra="balance" value="' + (bal ? fmt(bal) : '') + '" placeholder="0" /></td>';
+    h += '<td class="foot-extra-cell foot-balance-cell' + (balance < 0 ? ' neg' : '') + '" data-balance>' + fmt(balance) + '</td>';
     h += '</tr>';
 
     foot.innerHTML = h;
@@ -429,6 +431,14 @@
     state.members.forEach(function (m) { var el = body.querySelector('[data-total-member="' + m.id + '"]'); if (el) el.textContent = fmt(memberTotal(m.id)); });
     state.dates.forEach(function (d) { var el = foot.querySelector('[data-total-date="' + d.id + '"]'); if (el) el.textContent = fmt(dateTotal(d.id)); });
     var g = foot.querySelector('.foot-grand'); if (g) g.textContent = fmt(grandTotal());
+    // 날짜별 합계가 바뀌면 잔액(=합계-지출액)도 갱신
+    var b = foot.querySelector('[data-balance]');
+    if (b) {
+      var ex = (state.extra && state.extra.expense) || 0;
+      var balance = grandTotal() - ex;
+      b.textContent = fmt(balance);
+      b.classList.toggle('neg', balance < 0);
+    }
   }
 
   function findMember(id) { for (var i = 0; i < state.members.length; i++) if (state.members[i].id === id) return state.members[i]; return null; }
@@ -454,16 +464,26 @@
       if (m2) { m2.phone = t.value; save(); }
     }
   });
-  // ----- 지출액 / 잔액 입력(합계 열 아래 2개 행) -----
+  // 잔액 셀(자동 계산: 날짜별 합계 - 지출액)을 실시간 갱신
+  function refreshBalance() {
+    var el = foot.querySelector('[data-balance]');
+    if (!el) return;
+    var ex = (state.extra && state.extra.expense) || 0;
+    var balance = grandTotal() - ex;
+    el.textContent = fmt(balance);
+    el.classList.toggle('neg', balance < 0);
+  }
+  // ----- 지출액 입력(합계 열 아래): 누구나 입력·수정 가능 -----
   foot.addEventListener('input', function (e) {
     var t = e.target; if (!t.matches('.extra-input')) return;
-    var key = t.getAttribute('data-extra'); // 'expense' | 'balance'
-    if (key !== 'expense' && key !== 'balance') return;
+    var key = t.getAttribute('data-extra'); // 'expense'만 입력 가능
+    if (key !== 'expense') return;
     var num = parseNum(t.value);
     if (num < 0) num = 0;
     if (!state.extra) state.extra = { expense: 0, balance: 0 };
     state.extra[key] = num;
     t.classList.toggle('has-val', !!num);
+    refreshBalance(); // 지출액이 바뀌면 잔액 즉시 재계산
     save();
   });
   // 포커스 시 콤마 제거(숫자만), blur 시 다시 콤마 표기
@@ -778,7 +798,7 @@
     footer.push(grandTotal()); rows.push(footer);
     // 지출액 / 잔액 (합계 열 위치에 값 기록, 날짜 칸은 빈값)
     var ex = (state.extra && state.extra.expense) || 0;
-    var bal = (state.extra && state.extra.balance) || 0;
+    var bal = grandTotal() - ex; // 잔액 = 날짜별 합계 - 지출액 (자동 계산)
     var expRow = ['', '지출액', '']; state.dates.forEach(function () { expRow.push(''); }); expRow.push(ex); rows.push(expRow);
     var balRow = ['', '잔액', '']; state.dates.forEach(function () { balRow.push(''); }); balRow.push(bal); rows.push(balRow);
     var csv = rows.map(function (r) { return r.map(function (c) { var s = String(c == null ? '' : c); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(','); }).join('\n');
