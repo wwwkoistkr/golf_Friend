@@ -184,7 +184,7 @@ app.get('/', (c) => {
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛳</text></svg>">
   <title>골프등급표</title>
   <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-  <link href="/static/style.css?v=20260730n" rel="stylesheet">
+  <link href="/static/style.css?v=20260730o" rel="stylesheet">
 </head>
 <body>
   <header class="app-header" id="app-header">
@@ -212,22 +212,6 @@ app.get('/', (c) => {
         <tfoot id="sheet-foot"></tfoot>
       </table>
     </div>
-
-    <!-- 지출액/잔액: 표(sticky) 밖 별도 영역 (모바일 키패드 안정) -->
-    <section class="money-summary" id="money-summary">
-      <div class="ms-row">
-        <span class="ms-label"><i class="fas fa-coins"></i> 날짜별 합계</span>
-        <span class="ms-value" id="ms-total">0</span>
-      </div>
-      <div class="ms-row ms-expense">
-        <label class="ms-label" for="ms-expense-input"><i class="fas fa-money-bill-wave"></i> 지출액</label>
-        <input type="text" inputmode="numeric" pattern="[0-9]*" id="ms-expense-input" class="ms-input" placeholder="0" />
-      </div>
-      <div class="ms-row ms-balance">
-        <span class="ms-label"><i class="fas fa-wallet"></i> 잔액</span>
-        <span class="ms-value" id="ms-balance">0</span>
-      </div>
-    </section>
   </main>
 
   <!-- 관리자 자료실 화면 -->
@@ -337,7 +321,7 @@ app.get('/', (c) => {
     </div>
   </div>
 
-  <script src="/static/app.js?v=20260730n"></script>
+  <script src="/static/app.js?v=20260730o"></script>
 </body>
 </html>`)
 })
